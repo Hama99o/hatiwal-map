@@ -3,7 +3,9 @@
   "name": "Hatiwal Light (en)",
   "metadata": {
     "hatiwal:purpose": "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.",
-    "hatiwal:labels": "name:en -> name:latin -> name. Verified against a live tile: name:fa exists, name:ps does NOT (not in planetiler's default language set), so ps falls back to Dari script rather than to a Latin transliteration."
+    "hatiwal:labels": "name:en -> name:latin -> name. Verified against a live tile: name:fa exists, name:ps does NOT (not in planetiler's default language set), so ps falls back to Dari script rather than to a Latin transliteration.",
+    "hatiwal:palette": "Colours are the APP's own tokens from hatiwal-mobile/src/hooks/useColors.ts (light): background, card, muted, border, foreground, mutedForeground, mapWater. The map is the same light/dark as every other screen, not an approximation of it. Brand gold (#E8B23A) stays absent — it belongs to the price markers drawn on top.",
+    "hatiwal:zoomcoverage": "Labels exist at EVERY zoom: city/town/region low, suburb/neighbourhood mid, street names from z14. Caught by the render test asserting labels>0 — z15 had none at all before, because place-label matched only city-and-above."
   },
   "sources": {
     "hatiwal": {
@@ -33,7 +35,7 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#F4F5F7"
+        "background-color": "#FAFAFA"
       }
     },
     {
@@ -49,7 +51,7 @@
         "Polygon"
       ],
       "paint": {
-        "fill-color": "#D9E2EF"
+        "fill-color": "#BDD1DB"
       }
     },
     {
@@ -59,7 +61,7 @@
       "source-layer": "waterway",
       "minzoom": 8,
       "paint": {
-        "line-color": "#D9E2EF",
+        "line-color": "#BDD1DB",
         "line-width": [
           "interpolate",
           [
@@ -82,7 +84,7 @@
       "source-layer": "park",
       "minzoom": 10,
       "paint": {
-        "fill-color": "#D9E2EF",
+        "fill-color": "#BDD1DB",
         "fill-opacity": 0.25
       }
     },
@@ -93,7 +95,7 @@
       "source-layer": "building",
       "minzoom": 14,
       "paint": {
-        "fill-color": "#EAECF0",
+        "fill-color": "#F1F5F9",
         "fill-opacity": 0.7
       }
     },
@@ -108,7 +110,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#E7EAF0",
+        "line-color": "#E1E7EF",
         "line-width": [
           "interpolate",
           [
@@ -169,7 +171,7 @@
         4
       ],
       "paint": {
-        "line-color": "#5A6478",
+        "line-color": "#65758B",
         "line-opacity": 0.28,
         "line-dasharray": [
           3,
@@ -196,7 +198,11 @@
             "town",
             "village",
             "region",
-            "state"
+            "state",
+            "suburb",
+            "neighbourhood",
+            "quarter",
+            "hamlet"
           ]
         ]
       ],
@@ -228,18 +234,78 @@
             "zoom"
           ],
           4,
-          11,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "suburb",
+                  "neighbourhood",
+                  "quarter",
+                  "hamlet"
+                ]
+              ]
+            ],
+            9,
+            11
+          ],
           10,
-          15,
-          14,
-          18
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "suburb",
+                  "neighbourhood",
+                  "quarter",
+                  "hamlet"
+                ]
+              ]
+            ],
+            10,
+            15
+          ],
+          16,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "suburb",
+                  "neighbourhood",
+                  "quarter",
+                  "hamlet"
+                ]
+              ]
+            ],
+            13,
+            18
+          ]
         ],
         "text-max-width": 8,
         "text-padding": 6
       },
       "paint": {
-        "text-color": "#12224F",
-        "text-halo-color": "#FFFFFF",
+        "text-color": "#0F1729",
+        "text-halo-color": "#FAFAFA",
         "text-halo-width": 1.4
       }
     },
@@ -271,9 +337,46 @@
         "text-size": 11
       },
       "paint": {
-        "text-color": "#5A6478",
-        "text-halo-color": "#FFFFFF",
+        "text-color": "#65758B",
+        "text-halo-color": "#FAFAFA",
         "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "road-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "transportation_name",
+      "minzoom": 14,
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:en"
+          ],
+          [
+            "get",
+            "name:latin"
+          ],
+          [
+            "get",
+            "name"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "symbol-placement": "line",
+        "text-size": 11,
+        "text-max-angle": 30,
+        "symbol-spacing": 260,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#65758B",
+        "text-halo-color": "#FAFAFA",
+        "text-halo-width": 1.4
       }
     }
   ]

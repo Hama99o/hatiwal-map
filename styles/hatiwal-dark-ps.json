@@ -3,7 +3,9 @@
   "name": "Hatiwal Dark (ps)",
   "metadata": {
     "hatiwal:purpose": "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.",
-    "hatiwal:labels": "name:ps -> name:fa -> name:nonlatin -> name -> name:latin. Verified against a live tile: name:fa exists, name:ps does NOT (not in planetiler's default language set), so ps falls back to Dari script rather than to a Latin transliteration."
+    "hatiwal:labels": "name:ps -> name:fa -> name:nonlatin -> name -> name:latin. Verified against a live tile: name:fa exists, name:ps does NOT (not in planetiler's default language set), so ps falls back to Dari script rather than to a Latin transliteration.",
+    "hatiwal:palette": "Colours are the APP's own tokens from hatiwal-mobile/src/hooks/useColors.ts (dark): background, card, muted, border, foreground, mutedForeground, mapWater. The map is the same light/dark as every other screen, not an approximation of it. Brand gold (#E8B23A) stays absent — it belongs to the price markers drawn on top.",
+    "hatiwal:zoomcoverage": "Labels exist at EVERY zoom: city/town/region low, suburb/neighbourhood mid, street names from z14. Caught by the render test asserting labels>0 — z15 had none at all before, because place-label matched only city-and-above."
   },
   "sources": {
     "hatiwal": {
@@ -33,7 +35,7 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#0B1220"
+        "background-color": "#020817"
       }
     },
     {
@@ -49,7 +51,7 @@
         "Polygon"
       ],
       "paint": {
-        "fill-color": "#16233D"
+        "fill-color": "#394756"
       }
     },
     {
@@ -59,7 +61,7 @@
       "source-layer": "waterway",
       "minzoom": 8,
       "paint": {
-        "line-color": "#16233D",
+        "line-color": "#394756",
         "line-width": [
           "interpolate",
           [
@@ -82,7 +84,7 @@
       "source-layer": "park",
       "minzoom": 10,
       "paint": {
-        "fill-color": "#16233D",
+        "fill-color": "#394756",
         "fill-opacity": 0.25
       }
     },
@@ -93,7 +95,7 @@
       "source-layer": "building",
       "minzoom": 14,
       "paint": {
-        "fill-color": "#18243A",
+        "fill-color": "#1D283A",
         "fill-opacity": 0.7
       }
     },
@@ -108,7 +110,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#0B1220",
+        "line-color": "#26344B",
         "line-width": [
           "interpolate",
           [
@@ -137,7 +139,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#1E2A3F",
+        "line-color": "#121B31",
         "line-width": [
           "interpolate",
           [
@@ -169,7 +171,7 @@
         4
       ],
       "paint": {
-        "line-color": "#8FA0BC",
+        "line-color": "#94A3B8",
         "line-opacity": 0.28,
         "line-dasharray": [
           3,
@@ -196,7 +198,11 @@
             "town",
             "village",
             "region",
-            "state"
+            "state",
+            "suburb",
+            "neighbourhood",
+            "quarter",
+            "hamlet"
           ]
         ]
       ],
@@ -236,18 +242,78 @@
             "zoom"
           ],
           4,
-          11,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "suburb",
+                  "neighbourhood",
+                  "quarter",
+                  "hamlet"
+                ]
+              ]
+            ],
+            9,
+            11
+          ],
           10,
-          15,
-          14,
-          18
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "suburb",
+                  "neighbourhood",
+                  "quarter",
+                  "hamlet"
+                ]
+              ]
+            ],
+            10,
+            15
+          ],
+          16,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "suburb",
+                  "neighbourhood",
+                  "quarter",
+                  "hamlet"
+                ]
+              ]
+            ],
+            13,
+            18
+          ]
         ],
         "text-max-width": 8,
         "text-padding": 6
       },
       "paint": {
-        "text-color": "#C7D3E6",
-        "text-halo-color": "#0B1220",
+        "text-color": "#F8FAFC",
+        "text-halo-color": "#020817",
         "text-halo-width": 1.4
       }
     },
@@ -287,9 +353,54 @@
         "text-size": 11
       },
       "paint": {
-        "text-color": "#8FA0BC",
-        "text-halo-color": "#0B1220",
+        "text-color": "#94A3B8",
+        "text-halo-color": "#020817",
         "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "road-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "transportation_name",
+      "minzoom": 14,
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:ps"
+          ],
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "symbol-placement": "line",
+        "text-size": 11,
+        "text-max-angle": 30,
+        "symbol-spacing": 260,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#94A3B8",
+        "text-halo-color": "#020817",
+        "text-halo-width": 1.4
       }
     }
   ]
