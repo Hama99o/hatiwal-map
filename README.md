@@ -271,3 +271,74 @@ phones until a new build ships.
 - One tile source and one style for Android, web and (optionally) iOS.
 - A basemap branded to Hatiwal, with labels in the user's own language.
 - A foundation the map-search feature can afford, because panning is free.
+
+---
+
+## 8. What is LIVE (2026-08-31)
+
+`https://map.hatiwal.com` is serving. All of this was verified from the public internet, and by
+rendering a real map, not by reading headers.
+
+```
+tiles      132 MB pmtiles, zoom 0-14, 163,125 tiles, bounds = Afghanistan exactly
+           generated in 2 min 57 s from the 108 MB Geofabrik extract
+           OSM data date 2026-08-30 20:21 UTC
+cert       CN=map.hatiwal.com, Let's Encrypt, valid to 29 Nov 2026
+latency    ~100-120 ms per tile from Europe (Kabul UNMEASURED - see §6)
+```
+
+### On the VPS
+
+| Container | Role |
+|---|---|
+| `hatiwal_map_tiles` | `go-pmtiles serve` over the read-only tile file, port 8080, `kamal` network |
+| `hatiwal_map_web` | nginx front door: static styles + glyphs, proxies tiles. Registered with `kamal-proxy` for `map.hatiwal.com` |
+
+Both `--restart unless-stopped`. Files live in `/home/kamal/hatiwal-map/{tiles,static,nginx.conf}`.
+
+### URLs
+
+```
+/afghanistan/{z}/{x}/{y}.mvt        vector tiles
+/afghanistan/metadata               tileset metadata
+/styles/hatiwal-{light,dark}-{en,ps,fa}.json
+/fonts/{fontstack}/{range}.pbf      Noto Sans Regular + Italic, 256 ranges each
+```
+
+### Three bugs found here that `curl` reported as fine
+
+**1. Duplicate `Access-Control-Allow-Origin`.** `pmtiles serve --cors "*"` sets its own, and a
+server-level nginx `add_header` added a second. Two ACAO headers is an invalid response and browsers
+refuse it with a bare `net::ERR_FAILED`. `curl -I` showed both lines and looked healthy read one at
+a time; `curl -o /dev/null` never decodes a body, so it reported 200 throughout. **Only a real
+browser render exposed it.** CORS is now set per-location — on the static blocks nginx owns, never on
+the proxy.
+
+**2. `name:ps` is NOT in the tiles.** Verified against a live Kabul tile: `name`, `name:latin`,
+`name:nonlatin`, `name:fa`, `name:en` and ~70 other languages are present — Pashto is not, because it
+is not in planetiler's default language set. A ps-first label chain therefore fell through to
+`name:latin` and rendered **transliterations** ("ql'h mḥmd ḥsn khạn rkạh") to a Pashto speaker, which
+is worse than useless. The chain now falls to Dari, which shares the Arabic script:
+`name:ps -> name:fa -> name:nonlatin -> name -> name:latin`. Rendering confirms real joined script
+(`کابل شار`, `ترہ خیل`, `قلعہ محمد حسن خان رکاہ`) with no tofu.
+**Open question worth one experiment:** regenerate with `--languages=ps,fa,en` and see whether OSM
+actually carries `name:ps` for Afghan places. If it does, that is the proper fix and the Dari
+fallback becomes a backstop instead of the answer.
+
+**3. Blank 2nd/3rd renders** were a page-reuse race in the render harness (re-entering `setContent`
+against a live MapLibre instance), not a style fault. One fresh page per shot.
+
+### Attribution — required, not optional
+
+These tiles are OpenMapTiles-derived. Every map must visibly credit
+**"© OpenMapTiles © OpenStreetMap contributors"**. It is set on the source in every style file so a
+client cannot forget it.
+
+### Refreshing the data
+
+```bash
+docker run --rm -v "$PWD/tmp/data:/data" ghcr.io/onthegomap/planetiler:latest \
+  --area=afghanistan --output=/data/afghanistan.pmtiles --force --download
+# then scp to the VPS and restart hatiwal_map_tiles
+```
+Three minutes. Monthly or quarterly is ample — Kabul's street layout does not change weekly.

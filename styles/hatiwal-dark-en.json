@@ -1,0 +1,280 @@
+{
+  "version": 8,
+  "name": "Hatiwal Dark (en)",
+  "metadata": {
+    "hatiwal:purpose": "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.",
+    "hatiwal:labels": "name:en -> name:latin -> name. Verified against a live tile: name:fa exists, name:ps does NOT (not in planetiler's default language set), so ps falls back to Dari script rather than to a Latin transliteration."
+  },
+  "sources": {
+    "hatiwal": {
+      "type": "vector",
+      "tiles": [
+        "https://map.hatiwal.com/afghanistan/{z}/{x}/{y}.mvt"
+      ],
+      "minzoom": 0,
+      "maxzoom": 14,
+      "bounds": [
+        60.48761,
+        29.368563,
+        74.90017,
+        38.50674
+      ],
+      "attribution": "© OpenMapTiles © OpenStreetMap contributors"
+    }
+  },
+  "glyphs": "https://map.hatiwal.com/fonts/{fontstack}/{range}.pbf",
+  "center": [
+    67.69389,
+    33.937652
+  ],
+  "zoom": 5,
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#0B1220"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "water",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "#16233D"
+      }
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "waterway",
+      "minzoom": 8,
+      "paint": {
+        "line-color": "#16233D",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.5,
+          14,
+          1.6
+        ]
+      }
+    },
+    {
+      "id": "park",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "park",
+      "minzoom": 10,
+      "paint": {
+        "fill-color": "#16233D",
+        "fill-opacity": 0.25
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "building",
+      "minzoom": 14,
+      "paint": {
+        "fill-color": "#18243A",
+        "fill-opacity": 0.7
+      }
+    },
+    {
+      "id": "road-casing",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "minzoom": 6,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#0B1220",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.8,
+          11,
+          2.6,
+          16,
+          9
+        ]
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "minzoom": 6,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#1E2A3F",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.4,
+          11,
+          1.6,
+          16,
+          6
+        ]
+      }
+    },
+    {
+      "id": "boundary",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "boundary",
+      "filter": [
+        "<=",
+        [
+          "get",
+          "admin_level"
+        ],
+        4
+      ],
+      "paint": {
+        "line-color": "#8FA0BC",
+        "line-opacity": 0.28,
+        "line-dasharray": [
+          3,
+          2
+        ],
+        "line-width": 0.8
+      }
+    },
+    {
+      "id": "place-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "place",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "city",
+            "town",
+            "village",
+            "region",
+            "state"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:en"
+          ],
+          [
+            "get",
+            "name:latin"
+          ],
+          [
+            "get",
+            "name"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          11,
+          10,
+          15,
+          14,
+          18
+        ],
+        "text-max-width": 8,
+        "text-padding": 6
+      },
+      "paint": {
+        "text-color": "#C7D3E6",
+        "text-halo-color": "#0B1220",
+        "text-halo-width": 1.4
+      }
+    },
+    {
+      "id": "water-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "water_name",
+      "minzoom": 9,
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:en"
+          ],
+          [
+            "get",
+            "name:latin"
+          ],
+          [
+            "get",
+            "name"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 11
+      },
+      "paint": {
+        "text-color": "#8FA0BC",
+        "text-halo-color": "#0B1220",
+        "text-halo-width": 1.2
+      }
+    }
+  ]
+}

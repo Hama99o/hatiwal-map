@@ -4,3 +4,4 @@ tiles/
 *.osm.pbf
 tmp/
 .env.production
+node_modules
