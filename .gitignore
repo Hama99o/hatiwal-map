@@ -1,0 +1,6 @@
+tiles/
+*.pmtiles
+*.mbtiles
+*.osm.pbf
+tmp/
+.env.production
