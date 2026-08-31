@@ -178,7 +178,7 @@ doing almost nothing.
 ### DNS, already done by the owner
 
 ```
-map.hatiwal.com  ->  51.254.130.18   (same A record as @, api, www)
+map.hatiwal.com  ->  <VPS_IP — see gitignored .env.production>   (same A record as @, api, www)
 port 80  OPEN
 port 443 OPEN
 https://map.hatiwal.com/  ->  TLS handshake fails: no certificate for that hostname yet
