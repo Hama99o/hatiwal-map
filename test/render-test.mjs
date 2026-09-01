@@ -1,5 +1,14 @@
 import { chromium } from 'playwright';
-const BASE = 'https://map.hatiwal.com';
+// `MAP_BASE=http://localhost:8099 node test/render-test.mjs` renders the styles
+// in THIS working tree instead of the deployed ones.
+//
+// This defaulted to the live host with no override, which is a trap: a style you
+// just edited is NOT what gets scored, so the suite can report 18/18 on the old
+// deployed files while your change is untested — and a screenshot "before/after"
+// shows no difference for the same reason. The style's tile and glyph URLs are
+// absolute (the live host), so serving only the styles/ directory locally is
+// enough to test a style change against real tiles.
+const BASE = process.env.MAP_BASE || 'https://map.hatiwal.com';
 const VIEWS = [
   { name: 'kabul',   center: [69.2075, 34.5553], zoom: 12 },
   { name: 'country', center: [67.6939, 33.9377], zoom: 6  },
@@ -21,6 +30,20 @@ for (const mode of MODES) for (const lang of LANGS) for (const v of VIEWS) {
   const t0 = Date.now();
   await p.setContent(`<!doctype html><html><head>
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script>
+      // LOAD THE RTL TEXT PLUGIN, exactly as the web app does.
+      //
+      // Without it a browser renders Arabic script UNSHAPED and in logical
+      // order, so "ناحیه پانزدهم" comes out as "مهدزناپ هیحان" — every letter
+      // reversed and disconnected. That is not what users see: hatiwal.com calls
+      // setRTLTextPlugin (map-impl.tsx) and MapLibre NATIVE shapes RTL itself on
+      // mobile. So a harness without it was scoring the ps and fa cells against
+      // text no product surface produces — passing on shaping it could not see,
+      // and making its screenshots useless for judging the two RTL locales.
+      window.__rtlReady = maplibregl
+        .setRTLTextPlugin("https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js", true)
+        .catch(() => {});
+    </script>
     <style>html,body,#m{margin:0;height:440px;width:640px}</style></head><body><div id="m"></div><script>
     window.__e=[];window.__ready=false;
     const map=new maplibregl.Map({container:'m',style:'${BASE}/styles/hatiwal-${mode}-${lang}.json',

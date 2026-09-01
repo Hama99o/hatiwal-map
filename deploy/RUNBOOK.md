@@ -87,12 +87,46 @@ ssh kamal@<vps> 'docker restart hatiwal_map_tiles hatiwal_map_web'
 
 ### A style (colour, labels, fonts, zoom behaviour)
 
-Edit `styles/hatiwal-*.json`, then:
+**Do NOT hand-edit a style file.** All six are generated:
 
 ```bash
-node test/render-test.mjs                 # 18 cases — MUST be 18/18 before upload
-HOST=<vps> ./deploy/deploy.sh             # uploads styles; tiles untouched
+node build-styles.mjs        # rewrites all 6 from one source of truth
 ```
+
+They differ only in palette (light/dark) and label language (en/ps/fa), and six
+hand-maintained copies is how one bad expression took every one of them down at
+once. Edit the generator, re-run it, then:
+
+```bash
+# 1. Validate the styles IN YOUR TREE, before anything is uploaded.
+#    The harness defaults to the LIVE host, so without MAP_BASE you score the
+#    deployed files and your change is untested — a "before/after" screenshot
+#    then shows no difference for the same reason.
+python3 - <<'EOF' &   # a CORS-capable static server; plain http.server is not
+import functools,http.server,socketserver
+class H(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin","*"); super().end_headers()
+socketserver.TCPServer.allow_reuse_address=True
+socketserver.TCPServer(("127.0.0.1",8099),H).serve_forever()
+EOF
+MAP_BASE=http://127.0.0.1:8099 node test/render-test.mjs   # MUST be 18/18
+MAP_BASE=http://127.0.0.1:8099 node test/screenshot.mjs    # then LOOK at tmp/
+
+# 2. Ship. A style-only change needs no container restart — nginx serves them
+#    from a read-only mount — so scp is enough and causes no downtime.
+#    Keep a rollback copy first.
+ssh $SSH_USER@$KAMAL_HOST 'cd /home/kamal/hatiwal-map/static && rm -rf styles.prev && cp -r styles styles.prev'
+scp styles/*.json $SSH_USER@$KAMAL_HOST:/home/kamal/hatiwal-map/static/styles/
+node test/render-test.mjs                 # now against LIVE — MUST be 18/18
+```
+
+Rollback is `cp -r styles.prev/. styles/` on the server, or re-run the generator
+from an earlier commit and scp again.
+
+> MapLibre rejects `line-join` / `line-cap` in `paint` — they are LAYOUT
+> properties. It reports this as `unknown property` at load time, which the local
+> render catches and a deployed style would only whisper into a user's console.
 
 Clients pick styles up immediately — the URL is unchanged, so there is no cache
 to bust. **Always run the render test first**: a style that MapLibre rejects
