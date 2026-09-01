@@ -58,6 +58,9 @@ const PALETTES = {
     casingMinor: "#D7DEE9",
     roadMajor: "#FFFFFF",
     roadMinor: "#FFFFFF",
+    rail: "#C9D2DF",
+    path: "#DCC9A8",
+    buildingLine: "#E2E8F0",
     boundary: "#65758B",
     label: "#0F1729",
     labelMuted: "#65758B",
@@ -82,6 +85,9 @@ const PALETTES = {
     casingMinor: "#070D1A",
     roadMajor: "#33456A",
     roadMinor: "#1E2A43",
+    rail: "#2B3A54",
+    path: "#3A3320",
+    buildingLine: "#27334A",
     boundary: "#94A3B8",
     label: "#F8FAFC",
     labelMuted: "#94A3B8",
@@ -94,7 +100,16 @@ const PALETTES = {
  *  `--languages=ps,fa,en`; before that ps fell back to Dari, which is what the
  *  old metadata claimed and is no longer true. */
 const LANGS = {
-  en: ["name:en", "name:latin", "name"],
+  // `name` BEFORE `name:latin`, deliberately.
+  //
+  // `name:latin` is a machine transliteration and it is frequently garbage:
+  // a z16 Kabul render showed two streets as "gwincsjpad byigm" and "wdcjA 1_".
+  // A correct local name in its own script beats an unreadable Latin mangling —
+  // this app's users are Afghans whose UI language happens to be English, and
+  // "دهمزنگ" is recognisable to them where "gwincsjpad byigm" is recognisable to
+  // nobody. Places that matter internationally (Kabul, Herat) carry a real
+  // `name:en` and are unaffected; `name:latin` stays as a last resort.
+  en: ["name:en", "name", "name:latin"],
   ps: ["name:ps", "name:fa", "name:nonlatin", "name", "name:latin"],
   fa: ["name:fa", "name:nonlatin", "name", "name:latin"],
 };
@@ -112,9 +127,18 @@ const MINOR = ["minor", "service", "track", "unclassified", "residential"];
 // people navigate by landmark ("near the mosque", "opposite the bazaar").
 // Curated deliberately — the full `poi` layer at this density would bury the
 // listing markers this basemap exists to support.
-const POI_CLASSES = [
+// TIER 1 (z15) — the landmarks people actually give directions by.
+const POI_LANDMARK = [
   "place_of_worship", "hospital", "pharmacy", "school", "college",
-  "police", "fuel", "bank", "post", "bus", "railway",
+  "police", "fuel", "bank", "post", "bus", "railway", "town_hall",
+];
+// TIER 2 (z16) — commerce and meeting places. A marketplace's users arrange to
+// meet AT these ("in front of the bakery", "at the bazaar"), so they earn their
+// ink — but one zoom later than the landmarks, so a neighbourhood view stays
+// readable. MapLibre drops colliding labels, so these fill gaps rather than
+// pile up.
+const POI_COMMERCE = [
+  "shop", "food", "lodging", "attraction", "sport", "library", "cafe",
 ];
 
 const inClass = (values) => ["in", ["get", "class"], ["literal", values]];
@@ -197,6 +221,27 @@ function layers(c, lang) {
       },
     },
     {
+      // RAIL was invisible: `class: "rail"` is in none of the road groups, so
+      // every railway simply did not draw. It is real infrastructure and a
+      // landmark in its own right.
+      id: "rail", type: "line", source: "hatiwal", "source-layer": "transportation",
+      filter: inClass(["rail", "transit"]), minzoom: 10,
+      paint: {
+        "line-color": c.rail, "line-dasharray": [3, 2],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 16, 2.2],
+      },
+    },
+    {
+      // Footpaths and tracks, z15+. Someone walking the last 200m to a meetup
+      // needs the alley that a car map would omit.
+      id: "path", type: "line", source: "hatiwal", "source-layer": "transportation",
+      filter: inClass(["path", "footway", "pedestrian", "steps"]), minzoom: 15,
+      paint: {
+        "line-color": c.path, "line-dasharray": [2, 2], "line-opacity": 0.8,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 18, 2],
+      },
+    },
+    {
       id: "road-secondary-casing", type: "line", source: "hatiwal", "source-layer": "transportation",
       filter: inClass(SECONDARY),
       paint: {
@@ -231,6 +276,14 @@ function layers(c, lang) {
       },
     },
     {
+      // Outlines at z16+, so blocks read as blocks. The fill alone merged
+      // adjacent buildings into one shapeless mass at the zoom where a buyer is
+      // working out which building is meant.
+      id: "building-outline", type: "line", source: "hatiwal", "source-layer": "building",
+      minzoom: 16,
+      paint: { "line-color": c.buildingLine, "line-width": 0.6 },
+    },
+    {
       id: "boundary", type: "line", source: "hatiwal", "source-layer": "boundary",
       filter: ["<=", ["get", "admin_level"], 4],
       paint: {
@@ -260,7 +313,7 @@ function layers(c, lang) {
       // NEW. The single biggest orientation win for a meet-in-person marketplace:
       // z15+ only, so it never competes with price markers at scanning zooms.
       id: "poi-label", type: "symbol", source: "hatiwal", "source-layer": "poi",
-      minzoom: 15, filter: ["all", inClass(POI_CLASSES), ["has", "name"]],
+      minzoom: 15, filter: ["all", inClass(POI_LANDMARK), ["has", "name"]],
       layout: {
         "text-field": label, "text-font": FONT,
         "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 12.5],
@@ -270,8 +323,20 @@ function layers(c, lang) {
       paint: { "text-color": c.labelPoi, "text-halo-color": c.halo, "text-halo-width": 1.2 },
     },
     {
+      // Commerce, one zoom in from the landmarks.
+      id: "poi-commerce-label", type: "symbol", source: "hatiwal", "source-layer": "poi",
+      minzoom: 16, filter: ["all", inClass(POI_COMMERCE), ["has", "name"]],
+      layout: {
+        "text-field": label, "text-font": FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 16, 9.5, 18, 11.5],
+        "text-max-width": 9, "text-padding": 6, "text-optional": true,
+        "symbol-sort-key": ["get", "rank"],
+      },
+      paint: { "text-color": c.labelPoi, "text-halo-color": c.halo, "text-halo-width": 1.1 },
+    },
+    {
       id: "road-label", type: "symbol", source: "hatiwal", "source-layer": "transportation_name",
-      minzoom: 14,
+      minzoom: 12,
       layout: {
         "text-field": label, "text-font": FONT, "symbol-placement": "line",
         "text-size": 11, "text-max-angle": 30, "symbol-spacing": 260, "text-padding": 4,
@@ -289,7 +354,14 @@ function layers(c, lang) {
       id: "peak-label", type: "symbol", source: "hatiwal", "source-layer": "mountain_peak",
       minzoom: 9, filter: ["has", "name"],
       layout: {
-        "text-field": label, "text-font": FONT, "text-optional": true,
+        // Name + elevation: "Koh-e Asmai" alone says less than the same name with
+        // 2,100 m beside it when you are placing yourself in a valley city.
+        "text-field": [
+          "case",
+          ["has", "ele"], ["concat", label, "\n", ["to-string", ["round", ["get", "ele"]]], " m"],
+          label,
+        ],
+        "text-font": FONT, "text-optional": true,
         "text-size": ["interpolate", ["linear"], ["zoom"], 9, 9.5, 14, 11.5],
         "text-max-width": 8, "text-padding": 8,
       },
