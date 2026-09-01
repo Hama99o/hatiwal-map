@@ -218,3 +218,54 @@ plus six JSON styles. So:
   Re-uploading it is the rollback, and the swap is atomic.
 - **A bad container image**: both images are pinned by tag in `deploy.sh`. Pin a
   digest there if a `:latest` ever regresses.
+
+---
+
+## 8. Adding MORE data — measured, and deliberately deferred (2026-09-01)
+
+The owner asked whether a much larger dataset would give more detail in
+Jalalabad, Kabul, Herat, Kunar, Laghman, Nuristan and elsewhere. Measured first,
+one z14 viewport per place, counting rendered features:
+
+| place | road segments | NAMED roads | buildings |
+|---|---|---|---|
+| Kabul | 196 | 17 | 33 |
+| Herat | 98 | 20 | 3 |
+| Jalalabad | 65 | 8 | 2 |
+| Bamyan | 62 | 4 | 3 |
+| Mehtarlam (Laghman) | 74 | 1 | 1 |
+| Asadabad (Kunar) | 12 | 1 | 1 |
+| Farah | 98 | 0 | 3 |
+| Parun (Nuristan) | 10 | 0 | 1 |
+
+**FILE SIZE IS NOT THE LEVER.** OSM content is. Outside the big cities the roads
+exist as geometry with no names and almost no buildings, because nobody has
+mapped them. Raising `maxzoom` renders the SAME information more precisely — in
+Kabul and Herat that looks sharper; in Nuristan it renders the same 10 roads,
+crisper. A ~5 GB tileset (maxzoom ≈ 17) would not add one street name.
+
+What would actually add information, in value order:
+
+1. **maxzoom 14 → 15.** Cheap (~15–30 min on a 16-core box, ~350–450 MB vs
+   132 MB), sharpens z15+ geometry where a meetup is pinpointed. No code change:
+   the style follows the archive. Nothing below z15 changes.
+2. **Terrain — hillshade + contours.** The big one for the eastern mountain
+   provinces. Elevation data (Copernicus/SRTM ~30m) exists EVERYWHERE regardless
+   of whether anyone mapped the ground, so it fills exactly the provinces OSM
+   leaves blank. A separate raster tileset, legitimately GB-scale, and a real
+   project rather than a tweak.
+3. **Sentinel-2 imagery** (ESA Copernicus, open licence, ~10m, self-hostable).
+   Shows villages, fields and riverbeds where nothing is mapped at all. Biggest
+   content win for rural Afghanistan; heaviest lift.
+4. **OSM contributions.** The ONLY route to street names and buildings, and the
+   one where this product has an unfair advantage: its users hold the local
+   knowledge, and their edits land in these tiles at the next regeneration.
+
+NOT an option, ever: Google. Self-hosting their tiles is forbidden, it requires
+billing, and their terms bar using their data to build a competing map — which is
+the dependency this whole service exists to escape.
+
+Status: **deferred by the owner** — "leave it like this, with time we will
+decide". The tiles are current (OSM snapshot 2026-08-30) and refreshing them is
+§3, a manual step with no automation on the VPS.
+
