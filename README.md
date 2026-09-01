@@ -274,6 +274,12 @@ phones until a new build ships.
 
 ---
 
+## Operations
+
+**Something wrong, or need to change what it serves? → [`deploy/RUNBOOK.md`](deploy/RUNBOOK.md).**
+Health check, redeploy, updating tiles/styles, a symptom→cause→fix table for
+every failure that has actually happened here, and the rollback story.
+
 ## 8. What is LIVE (2026-08-31)
 
 `https://map.hatiwal.com` is serving. All of this was verified from the public internet, and by
