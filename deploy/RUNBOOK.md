@@ -135,27 +135,88 @@ trap that blanked all six at once.
 
 ### The tiles (new OSM data, or a bigger area)
 
-```bash
-docker run --rm -v "$PWD/tmp/data:/data" ghcr.io/onthegomap/planetiler:latest \
-  --area=afghanistan --languages=ps,fa,en \
-  --output=/data/afghanistan.pmtiles --force --download
+The tileset now covers **Afghanistan + Pakistan + Iran** (862 MB, zoom 0-14,
+built 2026-09-13 in 19m27s). Geofabrik has no combined extract, so the three are
+merged first:
 
-HOST=<vps> ./deploy/deploy.sh
+```bash
+cd tmp/data/pk1
+for c in afghanistan pakistan iran; do
+  curl -sL -C - -o $c.osm.pbf "https://download.geofabrik.de/asia/$c-latest.osm.pbf"
+done
+# osmium, NOT `cat`: a concatenation of PBFs is not a valid PBF, and objects that
+# appear in two extracts along a shared border would be duplicated.
+osmium merge afghanistan.osm.pbf pakistan.osm.pbf iran.osm.pbf -o hatiwal3.osm.pbf
+
+docker run --rm -v "$PWD:/data" ghcr.io/onthegomap/planetiler:latest \
+  --osm_path=/data/hatiwal3.osm.pbf --output=/data/hatiwal3.pmtiles \
+  --languages=ps,fa,en,ur --bounds=44.0,23.6,77.9,39.8 --threads=6 --force --download
 ```
 
-`--languages=ps,fa,en` is **not optional**: planetiler's default set excludes
-`name:ps`, and without it Pashto users get Latin transliterations
-(`ql'h mḥmd ḥsn khạn rkạh`) instead of `قلعه محمد حسن خان رکاه`. OSM has the
-Pashto names; the pipeline was dropping them.
+Four things that each cost time to rediscover:
 
-The upload is atomic — the new file lands as `.incoming.pmtiles` and is `mv`d
-into place, so no request ever reads a half-written archive.
+- **`--download` is required even though `--osm_path` is given.** The
+  OpenMapTiles profile also needs lake centerlines, water polygons and Natural
+  Earth; without it planetiler dies in 3 seconds on `lake_centerline.shp.zip
+  does not exist`.
+- **`--osm_path` takes ONE file.** Hence the merge; there is no multi-area flag.
+- **Use the Docker image, not `tmp/planetiler.jar`.** The jar needs Java 21 and
+  this host has 17 — it fails with `UnsupportedClassVersionError`, class file 65
+  vs 61.
+- **`--threads` matters if anything else is running.** The default takes every
+  core; at 6 the two QA emulators kept working through the whole build.
+
+`--languages` is **not optional**: planetiler's default set excludes `name:ps`,
+and without it Pashto users get Latin transliterations (`ql'h mḥmd ḥsn khạn
+rkạh`) instead of `قلعه محمد حسن خان رکاه`. `ur` joined the list for the same
+reason — before it, `name:ur` was absent from the data and no style file could
+have produced an Urdu map.
+
+Then deploy: see **§3a, Replacing the tileset by hand**, below. `deploy.sh` also
+works and uploads atomically (`.incoming.pmtiles` then `mv`).
+
+### 3a. Replacing the tileset by hand
+
+```bash
+# 1. Upload to a TEMP NAME — go-pmtiles is reading the live file.
+rsync -a --partial --inplace -e 'ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes' \
+  tmp/data/pk1/hatiwal3.pmtiles kamal@$HOST:/home/kamal/hatiwal-map/tiles/afghanistan.pmtiles.new
+
+# 2. PROVE it arrived intact before touching anything live.
+md5sum tmp/data/pk1/hatiwal3.pmtiles
+ssh kamal@$HOST 'md5sum /home/kamal/hatiwal-map/tiles/afghanistan.pmtiles.new'
+
+# 3. Rollback copy, then an ATOMIC rename.
+ssh kamal@$HOST 'cd /home/kamal/hatiwal-map/tiles \
+  && cp -f afghanistan.pmtiles afghanistan-af-only.rollback.pmtiles \
+  && mv -f afghanistan.pmtiles.new afghanistan.pmtiles && chmod 644 afghanistan.pmtiles'
+
+# 4. Restart tiles AND THEN nginx. Skipping nginx 502s every tile — see §4.
+ssh kamal@$HOST 'docker restart hatiwal_map_tiles && docker restart hatiwal_map_web'
+
+# 5. Verify with REAL TILES in the new area. A style 200 proves nothing about
+#    tile data; styles come off a different mount entirely.
+```
+
+**Keep the deployed FILE NAME.** go-pmtiles derives the URL path from it, and the
+Play Store build reads the tile URL out of the style JSON we serve rather than
+compiling it in — renaming `afghanistan.pmtiles` 404s every installed client into
+a blank map. The name is a misnomer now; that is by far the cheaper problem.
 
 ### Adding another country later
 
-Two changes: generate with a wider `--area` (or merge extracts), and widen the
-bounds each client clamps its camera to. On mobile that is `AFGHANISTAN_BOUNDS`
-in `MapCanvas.tsx`; the tiles do not care.
+Two changes, **in this order**: rebuild the tileset covering it, deploy that,
+and only THEN widen the bounds each client clamps its camera to. Doing it the
+other way round lets the camera pan into grey nothing, which is worse than the
+honest lock it replaced — that mistake is exactly what the 2026-09-13 Pakistan
+report was.
+
+The clamps are `SERVICE_AREA_BOUNDS` in mobile `MapCanvas.tsx` and
+`SERVICE_AREA_BOUNDS` / `isInServiceArea` in web `src/lib/geo.ts`. Both must
+match the `bounds` in `build-styles.mjs` and the planetiler `--bounds` exactly,
+or MapLibre asks for tiles that do not exist, or refuses to ask for ones that
+do. Geocoding has its own list: `countrycodes` in mobile
+`utils/geocoding.ts` and web `location-search.tsx`.
 
 ---
 
