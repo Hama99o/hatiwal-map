@@ -172,6 +172,7 @@ Every row here has actually happened.
 | Tile 404 but `metadata` returns 200 | The pmtiles file is stale, or the swap in step 2 of `deploy.sh` did not run | `ls -l /home/kamal/hatiwal-map/tiles/` — look for a leftover `.incoming.pmtiles` |
 | Map is light while the app is dark | A CLIENT bug, not this service — the client asked for the light style. Both exist and are served. | Mobile: the theme must come from `useColors().isDark`, never a framework colour-scheme hook. Web: read the `.dark` class. |
 | Everything 502/503 | Containers are gone or the proxy route was lost | `docker ps \| grep hatiwal_map`; if missing, re-run `deploy.sh` (§2) |
+| **Tiles 502 but STYLES 200, right after restarting `hatiwal_map_tiles`** | **nginx cached the tiles container's OLD IP.** `hatiwal_map_web` resolves `hatiwal_map_tiles` once at startup; restarting tiles gives it a new address on the `kamal` network and nginx keeps proxying to the dead one. Styles keep working because nginx serves those from its own read-only mount — that split is the tell. | `docker restart hatiwal_map_web`. Verify with a real tile, not the style: `curl -o /dev/null -w '%{http_code} %{size_download}' https://map.hatiwal.com/afghanistan/12/2835/1628.mvt` |
 
 ---
 
