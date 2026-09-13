@@ -26,6 +26,19 @@
  */
 import { writeFileSync } from "node:fs";
 
+// The path still says "afghanistan" even though the tileset now covers
+// Afghanistan, Pakistan and Iran (PK-1). THAT IS DELIBERATE — do not "fix" it.
+//
+// go-pmtiles derives this path from the deployed FILE NAME, and the mobile app
+// that is live in the Play Store hardcodes nothing but the style URL: it reads
+// this value out of the style JSON it fetches from the server. Renaming the
+// file would therefore 404 every already-installed client into a blank map,
+// and mobile is deliberately NOT being redeployed yet. Keeping the path and
+// swapping the CONTENT underneath means existing installs silently gain
+// Pakistan and Iran with no app update at all.
+//
+// (Those installs still cannot PAN there — maxBounds lives in app code, not in
+// the style — but the tiles they already request now cover three countries.)
 const TILES = "https://map.hatiwal.com/afghanistan/{z}/{x}/{y}.mvt";
 const GLYPHS = "https://map.hatiwal.com/fonts/{fontstack}/{range}.pbf";
 const FONT = ["Noto Sans Regular"];
@@ -97,8 +110,11 @@ const PALETTES = {
 };
 
 /** Label language chain. `name:ps` EXISTS now — the tiles are built with
- *  `--languages=ps,fa,en`; before that ps fell back to Dari, which is what the
- *  old metadata claimed and is no longer true. */
+ *  `--languages=ps,fa,en,ur`; before that ps fell back to Dari, which is what
+ *  the old metadata claimed and is no longer true. `ur` joined that list with
+ *  the AF+PK+IR rebuild (PK-1): the previous tileset was built `ps,fa,en`, so
+ *  no amount of style work could have produced an Urdu map — the names were
+ *  simply not in the data. */
 const LANGS = {
   // `name` BEFORE `name:latin`, deliberately.
   //
@@ -112,6 +128,13 @@ const LANGS = {
   en: ["name:en", "name", "name:latin"],
   ps: ["name:ps", "name:fa", "name:nonlatin", "name", "name:latin"],
   fa: ["name:fa", "name:nonlatin", "name", "name:latin"],
+  // Urdu. `name:nonlatin` sits second because Pakistan's OSM coverage carries a
+  // lot of Urdu/Arabic-script `name` values that are NOT tagged `name:ur` — that
+  // fallback renders them in their own script rather than dropping to a Latin
+  // transliteration, which is the same reasoning as the ps chain above. No
+  // `name:fa` step: Dari is not a better guess for an Urdu reader than the
+  // local name is.
+  ur: ["name:ur", "name:nonlatin", "name", "name:latin"],
 };
 
 const nameField = (lang) => ["coalesce", ...LANGS[lang].map((k) => ["get", k])];
@@ -384,14 +407,14 @@ const PURPOSE =
 
 let count = 0;
 for (const theme of ["light", "dark"]) {
-  for (const lang of ["en", "ps", "fa"]) {
+  for (const lang of ["en", "ps", "fa", "ur"]) {
     const c = PALETTES[theme];
     const style = {
       version: 8,
       name: `Hatiwal ${theme === "light" ? "Light" : "Dark"} (${lang})`,
       metadata: {
         "hatiwal:purpose": PURPOSE,
-        "hatiwal:labels": `${LANGS[lang][0]} → ${LANGS[lang].slice(1).join(" → ")}. name:ps EXISTS in these tiles (built with --languages=ps,fa,en); before that ps fell back to Dari script.`,
+        "hatiwal:labels": `${LANGS[lang][0]} → ${LANGS[lang].slice(1).join(" → ")}. name:ps and name:ur EXIST in these tiles (built with --languages=ps,fa,en,ur); before that ps fell back to Dari script and Urdu was absent entirely.`,
         "hatiwal:palette": "The APP's own tokens (hatiwal-mobile/src/hooks/useColors.ts), so the map is the same light/dark as every other screen rather than an approximation of it.",
         "hatiwal:generated": "build-styles.mjs — do NOT hand-edit a style file; edit the generator and re-run it, then `node test/render-test.mjs` (18/18).",
       },
@@ -401,7 +424,12 @@ for (const theme of ["light", "dark"]) {
           tiles: [TILES],
           minzoom: 0,
           maxzoom: 14,
-          bounds: [60.48761, 29.368563, 74.90017, 38.50674],
+          // AF + PK + IR, matching --bounds on the planetiler build exactly.
+          // This is the SOURCE's declared extent; MapLibre uses it to decide
+          // which tiles are worth requesting, so it has to match the data or
+          // the client either asks for tiles that do not exist or refuses to
+          // ask for ones that do.
+          bounds: [44.0, 23.6, 77.9, 39.8],
           attribution: "© OpenMapTiles © OpenStreetMap contributors",
         },
       },

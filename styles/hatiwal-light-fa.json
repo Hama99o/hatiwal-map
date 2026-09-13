@@ -3,7 +3,7 @@
   "name": "Hatiwal Light (fa)",
   "metadata": {
     "hatiwal:purpose": "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.",
-    "hatiwal:labels": "name:fa → name:nonlatin → name → name:latin. name:ps EXISTS in these tiles (built with --languages=ps,fa,en); before that ps fell back to Dari script.",
+    "hatiwal:labels": "name:fa → name:nonlatin → name → name:latin. name:ps and name:ur EXIST in these tiles (built with --languages=ps,fa,en,ur); before that ps fell back to Dari script and Urdu was absent entirely.",
     "hatiwal:palette": "The APP's own tokens (hatiwal-mobile/src/hooks/useColors.ts), so the map is the same light/dark as every other screen rather than an approximation of it.",
     "hatiwal:generated": "build-styles.mjs — do NOT hand-edit a style file; edit the generator and re-run it, then `node test/render-test.mjs` (18/18)."
   },
@@ -16,10 +16,10 @@
       "minzoom": 0,
       "maxzoom": 14,
       "bounds": [
-        60.48761,
-        29.368563,
-        74.90017,
-        38.50674
+        44,
+        23.6,
+        77.9,
+        39.8
       ],
       "attribution": "© OpenMapTiles © OpenStreetMap contributors"
     }
