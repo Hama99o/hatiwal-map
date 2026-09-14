@@ -318,7 +318,29 @@ function layers(c, lang) {
     // ── labels ──
     {
       id: "place-label", type: "symbol", source: "hatiwal", "source-layer": "place",
-      filter: inClass(["city", "town", "village", "region", "state", "suburb", "neighbourhood", "quarter", "hamlet"]),
+      // ZOOM-GATED BY CLASS. This used to be one flat class list with no zoom
+      // condition and no minzoom, so every hamlet, quarter and suburb in the
+      // tileset was laid out and collision-tested at EVERY zoom — including z5,
+      // where a village label is both illegible and meaningless.
+      //
+      // The cost is not theoretical and it is not uniform. Measured against the
+      // live tiles: one z10 tile over Peshawar carries 308 village features
+      // against 64 for the equivalent tile over Kabul. Pakistan is far more
+      // densely mapped than Afghanistan, so the renderer was doing ~5x the
+      // symbol work there for labels nobody could read — which is the shape of
+      // the "map goes blank, but only in Pakistan, and zooming fixes it" report.
+      //
+      // Thresholds follow the OpenMapTiles convention the tileset is built to:
+      // cities and admin areas always; towns from z8; villages from z11;
+      // sub-settlement detail from z13. Nothing is removed from the tileset —
+      // this is purely when each class is DRAWN, so it ships as a style update
+      // (cached 1h) with no rebuild and no app release.
+      filter: ["any",
+        inClass(["city", "region", "state"]),
+        ["all", [">=", ["zoom"], 8],  inClass(["town"])],
+        ["all", [">=", ["zoom"], 11], inClass(["village"])],
+        ["all", [">=", ["zoom"], 13], inClass(["suburb", "neighbourhood", "quarter", "hamlet"])],
+      ],
       layout: {
         "text-field": label, "text-font": FONT,
         // interpolate OUTERMOST; the class check lives INSIDE each stop.
