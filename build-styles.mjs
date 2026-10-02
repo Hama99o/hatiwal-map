@@ -109,6 +109,108 @@ const PALETTES = {
   },
 };
 
+// ── v2 "depth" palettes (2026-10-02, owner brief: "more graphic, a little 3D,
+// better colour, light AND dark"). Research + rationale: docs/design/MAP_V2.md.
+//
+// Emitted as hatiwal-v2-*.json BESIDE the v1 files, which stay byte-identical
+// until the owner approves the swap. Every v1 key is present (the shared
+// layers read them) plus the depth keys only v2 layers use.
+//
+// Light: warm limestone ground (Kabul/Herat in daylight, not a cold grey web
+// map), sage parks, clear blue water. Dark: built on the brand navy #12224F so
+// the map IS the app's dark surface, with water darker than land (Apple/Google
+// night convention) and a cool moonlit hillshade. Brand gold stays OFF the map
+// — motorways are pale apricot in light and dusty slate in dark, neither of
+// which can be mistaken for a #E8B23A price marker.
+const PALETTES_V2 = {
+  light: {
+    v2: true,
+    bg: "#F4F1EA",
+    water: "#A8CDE6",
+    waterShore: "#7FAFD3",
+    park: "#CFE4C1",
+    parkLine: "#B5D3A4",
+    wood: "#BFDAAE",
+    grass: "#D9E9C9",
+    farmland: "#ECEBD5",
+    sand: "#F0E2C2",
+    rock: "#E6E0D5",
+    ice: "#F7FAFC",
+    residential: "#ECE7DE",
+    commercial: "#F3E6D8",
+    industrial: "#E7E4E0",
+    building: "#E0D9CD",
+    buildingTop: "#EAE4D9",
+    buildingSide: "#CFC6B6",
+    buildingShadow: "rgba(74, 60, 40, 0.22)",
+    aeroway: "#E3E0DA",
+    casingMajor: "#E2C690",
+    casingMinor: "#D9D1C3",
+    roadMajor: "#FBEBC8",
+    roadMinor: "#FFFFFF",
+    roadShadow: "rgba(74, 60, 40, 0.25)",
+    rail: "#BFB7AA",
+    path: "#CDB48C",
+    buildingLine: "#CBC1B0",
+    boundary: "#7A6F8F",
+    label: "#1A2236",
+    labelMuted: "#5F6B80",
+    labelPoi: "#56637A",
+    labelWater: "#3E6E96",
+    halo: "#F7F5F0",
+    shadeShadow: "#77705E",
+    shadeHighlight: "#FFFFFF",
+    shadeAccent: "#8C7F66",
+  },
+  dark: {
+    v2: true,
+    bg: "#0F1B38",
+    water: "#0B2F52",
+    waterShore: "#2F6496",
+    park: "#123229",
+    parkLine: "#1C4536",
+    wood: "#102B24",
+    grass: "#132E26",
+    farmland: "#15213A",
+    sand: "#231F24",
+    rock: "#18223D",
+    ice: "#22314F",
+    residential: "#14213F",
+    commercial: "#1A2443",
+    industrial: "#152039",
+    building: "#1F2D52",
+    buildingTop: "#26365F",
+    buildingSide: "#18244A",
+    buildingShadow: "rgba(2, 5, 15, 0.55)",
+    aeroway: "#22305A",
+    casingMajor: "#0A1228",
+    casingMinor: "#0B1430",
+    roadMajor: "#5C6A8E",
+    roadMinor: "#2A3A63",
+    roadShadow: "rgba(0, 0, 0, 0.5)",
+    rail: "#33446E",
+    path: "#4A4231",
+    buildingLine: "#2F4170",
+    boundary: "#A3AECB",
+    label: "#EEF2FA",
+    labelMuted: "#97A3C0",
+    labelPoi: "#A9B4CE",
+    labelWater: "#7FA3D6",
+    halo: "#0F1B38",
+    shadeShadow: "#03081A",
+    shadeHighlight: "#3A4E85",
+    shadeAccent: "#0A1230",
+  },
+};
+
+// Terrain-RGB (Terrarium) source for the v2 hillshade. Mapterhorn publishes it
+// as open data (512px WebP, terrarium encoding); the PLAN is to self-host an
+// extract as /terrain on map.hatiwal.com (sizes measured in MAP_V2.md), so
+// clients never depend on a third party. Until that extract exists the URL is
+// overridable, which is how the previews were rendered.
+const TERRAIN = process.env.HATIWAL_TERRAIN || "https://map.hatiwal.com/terrain/{z}/{x}/{y}.webp";
+const TERRAIN_MAXZOOM = Number(process.env.HATIWAL_TERRAIN_MAXZOOM || 10);
+
 /** Label language chain. `name:ps` EXISTS now — the tiles are built with
  *  `--languages=ps,fa,en,ur`; before that ps fell back to Dari, which is what
  *  the old metadata claimed and is no longer true. `ur` joined that list with
@@ -168,19 +270,29 @@ const inClass = (values) => ["in", ["get", "class"], ["literal", values]];
 
 function layers(c, lang) {
   const label = nameField(lang);
+  // v2 only. Each `...only(v2, …)` splice adds a depth layer; with v2 false it
+  // adds nothing, so the v1 output stays byte-identical (checked by md5).
+  const v2 = !!c.v2;
+  const only = (cond, ...ls) => (cond ? ls : []);
   return [
     { id: "background", type: "background", paint: { "background-color": c.bg } },
 
     // ── ground cover: subtle, and the reason a city stops looking like a void ──
     {
       id: "landcover", type: "fill", source: "hatiwal", "source-layer": "landcover",
-      filter: inClass(["wood", "grass", "farmland", "sand", "ice"]),
+      // v2 adds rock: much of Afghanistan IS bare rock, and leaving it out drew
+      // the Hindu Kush as empty background.
+      filter: inClass(v2
+        ? ["wood", "grass", "farmland", "sand", "ice", "rock", "wetland"]
+        : ["wood", "grass", "farmland", "sand", "ice"]),
       paint: {
-        "fill-color": [
-          "match", ["get", "class"],
-          "wood", c.wood, "grass", c.grass, "farmland", c.grass, "sand", c.sand, c.grass,
-        ],
-        "fill-opacity": 0.75,
+        "fill-color": v2
+          ? ["match", ["get", "class"],
+              "wood", c.wood, "grass", c.grass, "wetland", c.grass, "farmland", c.farmland,
+              "sand", c.sand, "rock", c.rock, "ice", c.ice, c.grass]
+          : ["match", ["get", "class"],
+              "wood", c.wood, "grass", c.grass, "farmland", c.grass, "sand", c.sand, c.grass],
+        "fill-opacity": v2 ? 0.85 : 0.75,
       },
     },
     {
@@ -200,11 +312,51 @@ function layers(c, lang) {
       id: "park", type: "fill", source: "hatiwal", "source-layer": "park",
       paint: { "fill-color": c.park, "fill-opacity": 0.85 },
     },
+    ...only(v2,
+      {
+        // A slightly deeper edge so a park reads as a raised green lawn, not a
+        // tint. z13+, where parks are big enough to have an edge worth drawing.
+        id: "park-outline", type: "line", source: "hatiwal", "source-layer": "park",
+        minzoom: 13,
+        paint: {
+          "line-color": c.parkLine, "line-opacity": 0.9,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.5, 17, 1.6],
+        },
+      },
+      {
+        // MOUNTAIN SHADING. The single biggest "looks 3D at pitch 0" win for a
+        // country that is mostly mountains. Light from the north-west (map
+        // convention), viewport-anchored so it matches the building shadows.
+        // Strong at country/province zoom, fading out by z14 so it never muddies
+        // the streets a buyer is reading.
+        id: "hillshade", type: "hillshade", source: "terrain",
+        maxzoom: 16,
+        paint: {
+          "hillshade-illumination-anchor": "viewport",
+          "hillshade-illumination-direction": 315,
+          "hillshade-shadow-color": c.shadeShadow,
+          "hillshade-highlight-color": c.shadeHighlight,
+          "hillshade-accent-color": c.shadeAccent,
+          "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 8, 0.45, 10, 0.35, 12, 0.24, 13, 0.16, 14, 0.07, 15, 0],
+        },
+      },
+    ),
     {
       id: "water", type: "fill", source: "hatiwal", "source-layer": "water",
       filter: ["==", ["geometry-type"], "Polygon"],
       paint: { "fill-color": c.water },
     },
+    ...only(v2, {
+      // A soft, blurred shoreline: a lake reads as a basin with depth instead
+      // of a flat cut-out. Blur does the work, so no extra geometry is needed.
+      id: "water-shore", type: "line", source: "hatiwal", "source-layer": "water",
+      filter: ["==", ["geometry-type"], "Polygon"], minzoom: 8,
+      paint: {
+        "line-color": c.waterShore, "line-opacity": 0.7,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 12, 1.6, 16, 3],
+        "line-blur": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 16, 2.5],
+      },
+    }),
     {
       id: "waterway", type: "line", source: "hatiwal", "source-layer": "waterway",
       paint: {
@@ -220,10 +372,29 @@ function layers(c, lang) {
         "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 14, 6],
       },
     },
+    ...only(v2, {
+      // THE PSEUDO-3D TRICK: the same footprints, darker, nudged down-right in
+      // SCREEN space (viewport anchor) — a cast shadow from a north-west light.
+      // It reads as raised blocks at pitch 0, where most users stay. Offset
+      // grows with zoom because a shadow is proportional to how big a block
+      // looks.
+      id: "building-shadow", type: "fill", source: "hatiwal", "source-layer": "building",
+      minzoom: 14,
+      paint: {
+        "fill-color": c.buildingShadow,
+        "fill-translate-anchor": "viewport",
+        "fill-translate": ["interpolate", ["exponential", 2], ["zoom"], 14, ["literal", [0.6, 0.9]], 16, ["literal", [1.6, 2.4]], 18, ["literal", [4, 6]]],
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0.5, 15, 1],
+      },
+    }),
     {
       id: "building", type: "fill", source: "hatiwal", "source-layer": "building",
       minzoom: 14,
-      paint: { "fill-color": c.building, "fill-opacity": 0.7 },
+      paint: v2
+        // Tint deepens with zoom: a faint city texture at z14, solid blocks by z16.
+        ? { "fill-color": ["interpolate", ["linear"], ["zoom"], 14, c.building, 16, c.buildingTop],
+            "fill-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 16, 1] }
+        : { "fill-color": c.building, "fill-opacity": 0.7 },
     },
 
     // ── roads, drawn minor → major so the spine sits on top ──
@@ -280,6 +451,20 @@ function layers(c, lang) {
         "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.7, 12, 2, 16, 6],
       },
     },
+    ...only(v2, {
+      // Lift: a soft blurred shadow under the main roads, offset like the
+      // building shadows, so the spine of the city sits ABOVE the ground.
+      id: "road-major-shadow", type: "line", source: "hatiwal", "source-layer": "transportation",
+      filter: inClass(MAJOR), minzoom: 10,
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": c.roadShadow,
+        "line-translate-anchor": "viewport",
+        "line-translate": ["interpolate", ["linear"], ["zoom"], 10, ["literal", [0.5, 0.8]], 16, ["literal", [1.5, 2.5]]],
+        "line-blur": ["interpolate", ["linear"], ["zoom"], 10, 1, 16, 4],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 15],
+      },
+    }),
     {
       id: "road-major-casing", type: "line", source: "hatiwal", "source-layer": "transportation",
       filter: inClass(MAJOR),
@@ -306,6 +491,23 @@ function layers(c, lang) {
       minzoom: 16,
       paint: { "line-color": c.buildingLine, "line-width": 0.6 },
     },
+    ...only(v2, {
+      // REAL 3D when the user tilts. The tiles carry `render_height` and
+      // `render_min_height` (measured: Kabul z14 has real heights, most >10 m;
+      // planetiler fills untagged buildings with a default), so no faked
+      // height is needed — the coalesce is only a guard. At pitch 0 only the
+      // roofs show, sitting on the shadow layer above; tilt and the walls rise.
+      // Drawn AFTER the roads so a tilted wall is never painted over by a road.
+      id: "building-3d", type: "fill-extrusion", source: "hatiwal", "source-layer": "building",
+      minzoom: 15,
+      paint: {
+        "fill-extrusion-color": c.buildingTop,
+        "fill-extrusion-height": ["coalesce", ["get", "render_height"], 6],
+        "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+        "fill-extrusion-vertical-gradient": true,
+        "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.5, 0.92],
+      },
+    }),
     {
       id: "boundary", type: "line", source: "hatiwal", "source-layer": "boundary",
       filter: ["<=", ["get", "admin_level"], 4],
@@ -391,7 +593,7 @@ function layers(c, lang) {
     {
       id: "water-label", type: "symbol", source: "hatiwal", "source-layer": "water_name",
       layout: { "text-field": label, "text-font": FONT, "text-size": 11, "text-max-width": 7 },
-      paint: { "text-color": c.labelMuted, "text-halo-color": c.halo, "text-halo-width": 1.2 },
+      paint: { "text-color": c.labelWater || c.labelMuted, "text-halo-color": c.halo, "text-halo-width": 1.2 },
     },
     {
       // Afghanistan is mountainous and peaks are how people place themselves.
@@ -428,16 +630,24 @@ const PURPOSE =
   "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.";
 
 let count = 0;
+// v1 = the LIVE files (hatiwal-{theme}-{lang}.json). v2 = the depth redesign,
+// emitted beside them as hatiwal-v2-{theme}-{lang}.json until the owner
+// approves the swap. The swap is: make v2 the palette set written to the v1
+// names — never rename the files, every installed app requests them by name.
+for (const variant of ["v1", "v2"]) {
 for (const theme of ["light", "dark"]) {
   for (const lang of ["en", "ps", "fa", "ur"]) {
-    const c = PALETTES[theme];
+    const v2 = variant === "v2";
+    const c = (v2 ? PALETTES_V2 : PALETTES)[theme];
     const style = {
       version: 8,
-      name: `Hatiwal ${theme === "light" ? "Light" : "Dark"} (${lang})`,
+      name: `Hatiwal ${theme === "light" ? "Light" : "Dark"}${v2 ? " v2" : ""} (${lang})`,
       metadata: {
         "hatiwal:purpose": PURPOSE,
         "hatiwal:labels": `${LANGS[lang][0]} → ${LANGS[lang].slice(1).join(" → ")}. name:ps and name:ur EXIST in these tiles (built with --languages=ps,fa,en,ur); before that ps fell back to Dari script and Urdu was absent entirely.`,
-        "hatiwal:palette": "The APP's own tokens (hatiwal-mobile/src/hooks/useColors.ts), so the map is the same light/dark as every other screen rather than an approximation of it.",
+        "hatiwal:palette": v2
+          ? "v2 depth palette (docs/design/MAP_V2.md): warm limestone light, brand-navy dark, hillshade + building shadows + extrusion."
+          : "The APP's own tokens (hatiwal-mobile/src/hooks/useColors.ts), so the map is the same light/dark as every other screen rather than an approximation of it.",
         "hatiwal:generated": "build-styles.mjs — do NOT hand-edit a style file; edit the generator and re-run it, then `node test/render-test.mjs` (18/18).",
       },
       sources: {
@@ -454,14 +664,30 @@ for (const theme of ["light", "dark"]) {
           bounds: [44.0, 23.6, 77.9, 39.8],
           attribution: "© OpenMapTiles © OpenStreetMap contributors",
         },
+        ...(v2 ? {
+          terrain: {
+            type: "raster-dem",
+            tiles: [TERRAIN],
+            encoding: "terrarium",
+            tileSize: 512,
+            minzoom: 0,
+            maxzoom: TERRAIN_MAXZOOM,
+            bounds: [44.0, 23.6, 77.9, 39.8],
+            attribution: "© Mapterhorn",
+          },
+        } : {}),
       },
+      // v2: one north-west light for the extrusions, viewport-anchored like the
+      // hillshade and the shadows, so every depth cue agrees on where the sun is.
+      ...(v2 ? { light: { anchor: "viewport", position: [1.2, 315, 35], intensity: theme === "light" ? 0.35 : 0.25, color: "#FFFFFF" } } : {}),
       glyphs: GLYPHS,
       center: [67.69389, 33.937652],
       zoom: 5,
       layers: layers(c, lang),
     };
-    writeFileSync(`styles/hatiwal-${theme}-${lang}.json`, JSON.stringify(style, null, 2) + "\n");
+    writeFileSync(`styles/hatiwal-${v2 ? "v2-" : ""}${theme}-${lang}.json`, JSON.stringify(style, null, 2) + "\n");
     count++;
   }
 }
-console.log(`  wrote ${count} styles, ${layers(PALETTES.light, "en").length} layers each`);
+}
+console.log(`  wrote ${count} styles: v1 ${layers(PALETTES.light, "en").length} layers, v2 ${layers(PALETTES_V2.light, "en").length} layers`);

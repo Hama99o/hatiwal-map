@@ -1,0 +1,1509 @@
+{
+  "version": 8,
+  "name": "Hatiwal Light v2 (fa)",
+  "metadata": {
+    "hatiwal:purpose": "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.",
+    "hatiwal:labels": "name:fa → name:nonlatin → name → name:latin. name:ps and name:ur EXIST in these tiles (built with --languages=ps,fa,en,ur); before that ps fell back to Dari script and Urdu was absent entirely.",
+    "hatiwal:palette": "v2 depth palette (docs/design/MAP_V2.md): warm limestone light, brand-navy dark, hillshade + building shadows + extrusion.",
+    "hatiwal:generated": "build-styles.mjs — do NOT hand-edit a style file; edit the generator and re-run it, then `node test/render-test.mjs` (18/18)."
+  },
+  "sources": {
+    "hatiwal": {
+      "type": "vector",
+      "tiles": [
+        "https://map.hatiwal.com/afghanistan/{z}/{x}/{y}.mvt"
+      ],
+      "minzoom": 0,
+      "maxzoom": 14,
+      "bounds": [
+        44,
+        23.6,
+        77.9,
+        39.8
+      ],
+      "attribution": "© OpenMapTiles © OpenStreetMap contributors"
+    },
+    "terrain": {
+      "type": "raster-dem",
+      "tiles": [
+        "https://map.hatiwal.com/terrain/{z}/{x}/{y}.webp"
+      ],
+      "encoding": "terrarium",
+      "tileSize": 512,
+      "minzoom": 0,
+      "maxzoom": 10,
+      "bounds": [
+        44,
+        23.6,
+        77.9,
+        39.8
+      ],
+      "attribution": "© Mapterhorn"
+    }
+  },
+  "light": {
+    "anchor": "viewport",
+    "position": [
+      1.2,
+      315,
+      35
+    ],
+    "intensity": 0.35,
+    "color": "#FFFFFF"
+  },
+  "glyphs": "https://map.hatiwal.com/fonts/{fontstack}/{range}.pbf",
+  "center": [
+    67.69389,
+    33.937652
+  ],
+  "zoom": 5,
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#F4F1EA"
+      }
+    },
+    {
+      "id": "landcover",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "landcover",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "wood",
+            "grass",
+            "farmland",
+            "sand",
+            "ice",
+            "rock",
+            "wetland"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "wood",
+          "#BFDAAE",
+          "grass",
+          "#D9E9C9",
+          "wetland",
+          "#D9E9C9",
+          "farmland",
+          "#ECEBD5",
+          "sand",
+          "#F0E2C2",
+          "rock",
+          "#E6E0D5",
+          "ice",
+          "#F7FAFC",
+          "#D9E9C9"
+        ],
+        "fill-opacity": 0.85
+      }
+    },
+    {
+      "id": "landuse",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "landuse",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "residential",
+            "commercial",
+            "retail",
+            "industrial",
+            "railway"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "residential",
+          "#ECE7DE",
+          "commercial",
+          "#F3E6D8",
+          "retail",
+          "#F3E6D8",
+          "#E7E4E0"
+        ],
+        "fill-opacity": 0.95
+      }
+    },
+    {
+      "id": "park",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "park",
+      "paint": {
+        "fill-color": "#CFE4C1",
+        "fill-opacity": 0.85
+      }
+    },
+    {
+      "id": "park-outline",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "park",
+      "minzoom": 13,
+      "paint": {
+        "line-color": "#B5D3A4",
+        "line-opacity": 0.9,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.5,
+          17,
+          1.6
+        ]
+      }
+    },
+    {
+      "id": "hillshade",
+      "type": "hillshade",
+      "source": "terrain",
+      "maxzoom": 16,
+      "paint": {
+        "hillshade-illumination-anchor": "viewport",
+        "hillshade-illumination-direction": 315,
+        "hillshade-shadow-color": "#77705E",
+        "hillshade-highlight-color": "#FFFFFF",
+        "hillshade-accent-color": "#8C7F66",
+        "hillshade-exaggeration": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          0.6,
+          8,
+          0.45,
+          10,
+          0.35,
+          12,
+          0.24,
+          13,
+          0.16,
+          14,
+          0.07,
+          15,
+          0
+        ]
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "water",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "#A8CDE6"
+      }
+    },
+    {
+      "id": "water-shore",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "water",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
+      "minzoom": 8,
+      "paint": {
+        "line-color": "#7FAFD3",
+        "line-opacity": 0.7,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.6,
+          12,
+          1.6,
+          16,
+          3
+        ],
+        "line-blur": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.4,
+          16,
+          2.5
+        ]
+      }
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "waterway",
+      "paint": {
+        "line-color": "#A8CDE6",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.6,
+          14,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "aeroway",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "aeroway",
+      "minzoom": 10,
+      "paint": {
+        "line-color": "#E3E0DA",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.2,
+          14,
+          6
+        ]
+      }
+    },
+    {
+      "id": "building-shadow",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "building",
+      "minzoom": 14,
+      "paint": {
+        "fill-color": "rgba(74, 60, 40, 0.22)",
+        "fill-translate-anchor": "viewport",
+        "fill-translate": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          [
+            "literal",
+            [
+              0.6,
+              0.9
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              1.6,
+              2.4
+            ]
+          ],
+          18,
+          [
+            "literal",
+            [
+              4,
+              6
+            ]
+          ]
+        ],
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.5,
+          15,
+          1
+        ]
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill",
+      "source": "hatiwal",
+      "source-layer": "building",
+      "minzoom": 14,
+      "paint": {
+        "fill-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          "#E0D9CD",
+          16,
+          "#EAE4D9"
+        ],
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.6,
+          16,
+          1
+        ]
+      }
+    },
+    {
+      "id": "road-minor-casing",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "minor",
+            "service",
+            "track",
+            "unclassified",
+            "residential"
+          ]
+        ]
+      ],
+      "minzoom": 12,
+      "paint": {
+        "line-color": "#D9D1C3",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.2,
+          16,
+          6
+        ]
+      }
+    },
+    {
+      "id": "road-minor",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "minor",
+            "service",
+            "track",
+            "unclassified",
+            "residential"
+          ]
+        ]
+      ],
+      "minzoom": 12,
+      "paint": {
+        "line-color": "#FFFFFF",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.5,
+          16,
+          3.6
+        ]
+      }
+    },
+    {
+      "id": "rail",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "rail",
+            "transit"
+          ]
+        ]
+      ],
+      "minzoom": 10,
+      "paint": {
+        "line-color": "#BFB7AA",
+        "line-dasharray": [
+          3,
+          2
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.6,
+          16,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "path",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "path",
+            "footway",
+            "pedestrian",
+            "steps"
+          ]
+        ]
+      ],
+      "minzoom": 15,
+      "paint": {
+        "line-color": "#CDB48C",
+        "line-dasharray": [
+          2,
+          2
+        ],
+        "line-opacity": 0.8,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.6,
+          18,
+          2
+        ]
+      }
+    },
+    {
+      "id": "road-secondary-casing",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "secondary",
+            "tertiary"
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "#D9D1C3",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1.4,
+          12,
+          3.4,
+          16,
+          9
+        ]
+      }
+    },
+    {
+      "id": "road-secondary",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "secondary",
+            "tertiary"
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "#FFFFFF",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.7,
+          12,
+          2,
+          16,
+          6
+        ]
+      }
+    },
+    {
+      "id": "road-major-shadow",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary"
+          ]
+        ]
+      ],
+      "minzoom": 10,
+      "layout": {
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": "rgba(74, 60, 40, 0.25)",
+        "line-translate-anchor": "viewport",
+        "line-translate": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          [
+            "literal",
+            [
+              0.5,
+              0.8
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              1.5,
+              2.5
+            ]
+          ]
+        ],
+        "line-blur": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1,
+          16,
+          4
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          4,
+          16,
+          15
+        ]
+      }
+    },
+    {
+      "id": "road-major-casing",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": "#E2C690",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1.6,
+          11,
+          4.4,
+          16,
+          13
+        ]
+      }
+    },
+    {
+      "id": "road-major",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "transportation",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": "#FBEBC8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.8,
+          11,
+          2.6,
+          16,
+          9
+        ]
+      }
+    },
+    {
+      "id": "building-outline",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "building",
+      "minzoom": 16,
+      "paint": {
+        "line-color": "#CBC1B0",
+        "line-width": 0.6
+      }
+    },
+    {
+      "id": "building-3d",
+      "type": "fill-extrusion",
+      "source": "hatiwal",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-extrusion-color": "#EAE4D9",
+        "fill-extrusion-height": [
+          "coalesce",
+          [
+            "get",
+            "render_height"
+          ],
+          6
+        ],
+        "fill-extrusion-base": [
+          "coalesce",
+          [
+            "get",
+            "render_min_height"
+          ],
+          0
+        ],
+        "fill-extrusion-vertical-gradient": true,
+        "fill-extrusion-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          15.5,
+          0.92
+        ]
+      }
+    },
+    {
+      "id": "boundary",
+      "type": "line",
+      "source": "hatiwal",
+      "source-layer": "boundary",
+      "filter": [
+        "<=",
+        [
+          "get",
+          "admin_level"
+        ],
+        4
+      ],
+      "paint": {
+        "line-color": "#7A6F8F",
+        "line-opacity": 0.35,
+        "line-dasharray": [
+          3,
+          2
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0.6,
+          10,
+          1.6
+        ]
+      }
+    },
+    {
+      "id": "place-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "place",
+      "filter": [
+        "any",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "city",
+              "region",
+              "state"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            8
+          ],
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "town"
+              ]
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            11
+          ],
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "village"
+              ]
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            13
+          ],
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "suburb",
+                "neighbourhood",
+                "quarter",
+                "hamlet"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "city",
+                  "region",
+                  "state"
+                ]
+              ]
+            ],
+            12,
+            9
+          ],
+          10,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "city",
+                  "region",
+                  "state"
+                ]
+              ]
+            ],
+            16,
+            12
+          ],
+          14,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "city",
+                  "region",
+                  "state"
+                ]
+              ]
+            ],
+            20,
+            14
+          ]
+        ],
+        "text-max-width": 8,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#1A2236",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.4
+      }
+    },
+    {
+      "id": "poi-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "place_of_worship",
+              "hospital",
+              "pharmacy",
+              "school",
+              "college",
+              "police",
+              "fuel",
+              "bank",
+              "post",
+              "bus",
+              "railway",
+              "town_hall"
+            ]
+          ]
+        ],
+        [
+          "has",
+          "name"
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          10,
+          18,
+          12.5
+        ],
+        "text-max-width": 9,
+        "text-padding": 6,
+        "text-optional": true,
+        "symbol-sort-key": [
+          "get",
+          "rank"
+        ]
+      },
+      "paint": {
+        "text-color": "#56637A",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "poi-commerce-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "shop",
+              "food",
+              "lodging",
+              "attraction",
+              "sport",
+              "library",
+              "cafe"
+            ]
+          ]
+        ],
+        [
+          "has",
+          "name"
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          9.5,
+          18,
+          11.5
+        ],
+        "text-max-width": 9,
+        "text-padding": 6,
+        "text-optional": true,
+        "symbol-sort-key": [
+          "get",
+          "rank"
+        ]
+      },
+      "paint": {
+        "text-color": "#56637A",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.1
+      }
+    },
+    {
+      "id": "road-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "transportation_name",
+      "minzoom": 12,
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "symbol-placement": "line",
+        "text-size": 11,
+        "text-max-angle": 30,
+        "symbol-spacing": 260,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#5F6B80",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.4
+      }
+    },
+    {
+      "id": "water-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "water_name",
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 7
+      },
+      "paint": {
+        "text-color": "#3E6E96",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "peak-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "mountain_peak",
+      "minzoom": 9,
+      "filter": [
+        "has",
+        "name"
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "has",
+            "ele"
+          ],
+          [
+            "concat",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:fa"
+              ],
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name:latin"
+              ]
+            ],
+            "\n",
+            [
+              "to-string",
+              [
+                "round",
+                [
+                  "get",
+                  "ele"
+                ]
+              ]
+            ],
+            " m"
+          ],
+          [
+            "coalesce",
+            [
+              "get",
+              "name:fa"
+            ],
+            [
+              "get",
+              "name:nonlatin"
+            ],
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name:latin"
+            ]
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-optional": true,
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          9.5,
+          14,
+          11.5
+        ],
+        "text-max-width": 8,
+        "text-padding": 8
+      },
+      "paint": {
+        "text-color": "#5F6B80",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "aerodrome-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "aerodrome_label",
+      "minzoom": 10,
+      "filter": [
+        "has",
+        "name"
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:fa"
+          ],
+          [
+            "get",
+            "name:nonlatin"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 8,
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "#5F6B80",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1.2
+      }
+    }
+  ]
+}
