@@ -224,7 +224,48 @@ The clamps are `SERVICE_AREA_BOUNDS` in mobile `MapCanvas.tsx` and
 match the `bounds` in `build-styles.mjs` and the planetiler `--bounds` exactly,
 or MapLibre asks for tiles that do not exist, or refuses to ask for ones that
 do. Geocoding has its own list: `countrycodes` in mobile
-`utils/geocoding.ts` and web `location-search.tsx`.
+`utils/geocoding.ts` and web `location-search.tsx`. A new area also needs the
+hillshade rebuilt with the wider `BBOX` (§3c).
+
+### 3b. Monthly OSM refresh (automatic) — `tools/update-tiles.sh`
+
+Runs on the VPS from kamal's crontab, never on a laptop:
+
+```
+0 2 1 * *  cd /home/kamal/hatiwal-map && flock -n /tmp/hatiwal-tiles.lock ./tools/update-tiles.sh >> logs/update-tiles.log 2>&1
+```
+
+It is the same build as above (download, then osmium merge, then planetiler
+`ps,fa,en,ur`, same bounds), run at nice 19 / ionice idle in containers capped
+at 3 GB, so Postgres and the API keep their headroom. It swaps **only** if every
+gate passes:
+- size ≥ 500 MB;
+- bounds cover AF+PK+IR;
+- Kabul, Herat, Islamabad, Karachi and Tehran z10/12/14 tiles exist and haven't
+  halved against the live file;
+- after the swap, a public Islamabad z12 check, which rolls back on its own if
+  it fails.
+
+The previous file stays as `tiles/afghanistan.prev.pmtiles`.
+
+- Dry run (build + gates, no swap): `SKIP_SWAP=1 ./tools/update-tiles.sh`
+- Did last month's run work? `tail -30 logs/update-tiles.log`. The last line
+  says `DONE in N min — peak container RAM …` or `ABORT: <reason>`.
+- Manual rollback: `mv tiles/afghanistan.prev.pmtiles tiles/afghanistan.pmtiles`,
+  then restart **both** containers (§4: tiles first, then web).
+
+### 3c. Hillshade tiles (v2 styles) — `tools/build-hillshade.sh`
+
+```bash
+cd ~/hatiwal-map && ./tools/build-hillshade.sh     # on the VPS
+```
+
+It extracts the Mapterhorn DEM for the service area (754 MB, z0–10), renders
+shadows-only WebP with `tools/hillshade.mjs`, and atomically installs
+`tiles/hillshade.pmtiles` (~120 MB). go-pmtiles serves it at
+`/hillshade/{z}/{x}/{y}.webp` with no config change. The DEM is deleted
+afterwards. It's a one-off: terrain doesn't change, so it only needs rerunning
+for a new area. Why pre-rendered and not a live DEM: `docs/design/MAP_V2.md` §4.
 
 ---
 

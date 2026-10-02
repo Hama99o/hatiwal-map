@@ -23,12 +23,11 @@
       ],
       "attribution": "© OpenMapTiles © OpenStreetMap contributors"
     },
-    "terrain": {
-      "type": "raster-dem",
+    "hillshade": {
+      "type": "raster",
       "tiles": [
-        "https://map.hatiwal.com/terrain/{z}/{x}/{y}.webp"
+        "https://map.hatiwal.com/hillshade/{z}/{x}/{y}.webp"
       ],
-      "encoding": "terrarium",
       "tileSize": 512,
       "minzoom": 0,
       "maxzoom": 10,
@@ -38,7 +37,7 @@
         77.9,
         39.8
       ],
-      "attribution": "© Mapterhorn"
+      "attribution": "Terrain © Mapterhorn"
     }
   },
   "light": {
@@ -191,16 +190,11 @@
     },
     {
       "id": "hillshade",
-      "type": "hillshade",
-      "source": "terrain",
-      "maxzoom": 16,
+      "type": "raster",
+      "source": "hillshade",
+      "maxzoom": 15,
       "paint": {
-        "hillshade-illumination-anchor": "viewport",
-        "hillshade-illumination-direction": 315,
-        "hillshade-shadow-color": "#77705E",
-        "hillshade-highlight-color": "#FFFFFF",
-        "hillshade-accent-color": "#8C7F66",
-        "hillshade-exaggeration": [
+        "raster-opacity": [
           "interpolate",
           [
             "linear"
@@ -209,20 +203,17 @@
             "zoom"
           ],
           4,
-          0.6,
-          8,
-          0.45,
+          0.5,
           10,
-          0.35,
+          0.425,
           12,
-          0.24,
-          13,
-          0.16,
+          0.3,
           14,
-          0.07,
+          0.1,
           15,
           0
-        ]
+        ],
+        "raster-fade-duration": 0
       }
     },
     {
@@ -920,6 +911,74 @@
       }
     },
     {
+      "id": "housenumber-label",
+      "type": "symbol",
+      "source": "hatiwal",
+      "source-layer": "housenumber",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "in",
+            "+",
+            [
+              "to-string",
+              [
+                "get",
+                "housenumber"
+              ]
+            ]
+          ]
+        ],
+        [
+          "<=",
+          [
+            "length",
+            [
+              "to-string",
+              [
+                "get",
+                "housenumber"
+              ]
+            ]
+          ],
+          8
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "housenumber"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          17,
+          9,
+          19,
+          11
+        ],
+        "text-padding": 2,
+        "text-max-width": 6
+      },
+      "paint": {
+        "text-color": "#5F6B80",
+        "text-halo-color": "#F7F5F0",
+        "text-halo-width": 1,
+        "text-opacity": 0.85
+      }
+    },
+    {
       "id": "place-label",
       "type": "symbol",
       "source": "hatiwal",
@@ -948,7 +1007,7 @@
             [
               "zoom"
             ],
-            8
+            7
           ],
           [
             "in",
@@ -971,7 +1030,7 @@
             [
               "zoom"
             ],
-            11
+            10
           ],
           [
             "in",
@@ -994,7 +1053,7 @@
             [
               "zoom"
             ],
-            13
+            12
           ],
           [
             "in",
@@ -1007,7 +1066,29 @@
               [
                 "suburb",
                 "neighbourhood",
-                "quarter",
+                "quarter"
+              ]
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            13
+          ],
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
                 "hamlet"
               ]
             ]
@@ -1031,6 +1112,10 @@
           ],
           [
             "get",
+            "name:en"
+          ],
+          [
+            "get",
             "name"
           ],
           [
@@ -1040,6 +1125,30 @@
         ],
         "text-font": [
           "Noto Sans Regular"
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "state",
+          0,
+          "region",
+          0,
+          "city",
+          1,
+          "town",
+          2,
+          "village",
+          3,
+          "suburb",
+          4,
+          "quarter",
+          4,
+          "neighbourhood",
+          5,
+          6
         ],
         "text-size": [
           "interpolate",
@@ -1127,36 +1236,71 @@
       "type": "symbol",
       "source": "hatiwal",
       "source-layer": "poi",
-      "minzoom": 15,
+      "minzoom": 14,
       "filter": [
         "all",
         [
-          "in",
-          [
-            "get",
-            "class"
-          ],
-          [
-            "literal",
-            [
-              "place_of_worship",
-              "hospital",
-              "pharmacy",
-              "school",
-              "college",
-              "police",
-              "fuel",
-              "bank",
-              "post",
-              "bus",
-              "railway",
-              "town_hall"
-            ]
-          ]
-        ],
-        [
           "has",
           "name"
+        ],
+        [
+          "any",
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "place_of_worship",
+                "hospital",
+                "pharmacy",
+                "school",
+                "college",
+                "police",
+                "fuel",
+                "bank",
+                "post",
+                "bus",
+                "railway",
+                "town_hall"
+              ]
+            ]
+          ],
+          [
+            "all",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              16
+            ],
+            [
+              "!",
+              [
+                "in",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "literal",
+                  [
+                    "shop",
+                    "food",
+                    "lodging",
+                    "attraction",
+                    "sport",
+                    "library",
+                    "cafe"
+                  ]
+                ]
+              ]
+            ]
+          ]
         ]
       ],
       "layout": {
@@ -1173,6 +1317,10 @@
           [
             "get",
             "name:nonlatin"
+          ],
+          [
+            "get",
+            "name:en"
           ],
           [
             "get",
@@ -1194,8 +1342,8 @@
           [
             "zoom"
           ],
-          15,
-          10,
+          14,
+          9.5,
           18,
           12.5
         ],
@@ -1203,8 +1351,44 @@
         "text-padding": 6,
         "text-optional": true,
         "symbol-sort-key": [
-          "get",
-          "rank"
+          "+",
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "place_of_worship",
+                  "hospital",
+                  "pharmacy",
+                  "school",
+                  "college",
+                  "police",
+                  "fuel",
+                  "bank",
+                  "post",
+                  "bus",
+                  "railway",
+                  "town_hall"
+                ]
+              ]
+            ],
+            0,
+            100
+          ],
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            50
+          ]
         ]
       },
       "paint": {
@@ -1218,7 +1402,7 @@
       "type": "symbol",
       "source": "hatiwal",
       "source-layer": "poi",
-      "minzoom": 16,
+      "minzoom": 15,
       "filter": [
         "all",
         [
@@ -1262,6 +1446,10 @@
           ],
           [
             "get",
+            "name:en"
+          ],
+          [
+            "get",
             "name"
           ],
           [
@@ -1280,7 +1468,7 @@
           [
             "zoom"
           ],
-          16,
+          15,
           9.5,
           18,
           11.5
@@ -1289,8 +1477,16 @@
         "text-padding": 6,
         "text-optional": true,
         "symbol-sort-key": [
-          "get",
-          "rank"
+          "+",
+          50,
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            50
+          ]
         ]
       },
       "paint": {
@@ -1322,6 +1518,10 @@
           ],
           [
             "get",
+            "name:en"
+          ],
+          [
+            "get",
             "name"
           ],
           [
@@ -1333,7 +1533,96 @@
           "Noto Sans Regular"
         ],
         "symbol-placement": "line",
-        "text-size": 11,
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "motorway",
+                  "trunk",
+                  "primary",
+                  "secondary",
+                  "tertiary"
+                ]
+              ]
+            ],
+            11,
+            10
+          ],
+          16,
+          [
+            "case",
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "motorway",
+                  "trunk",
+                  "primary",
+                  "secondary",
+                  "tertiary"
+                ]
+              ]
+            ],
+            13,
+            11.5
+          ]
+        ],
+        "symbol-sort-key": [
+          "case",
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "motorway",
+                "trunk",
+                "primary"
+              ]
+            ]
+          ],
+          0,
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "secondary",
+                "tertiary"
+              ]
+            ]
+          ],
+          1,
+          2
+        ],
         "text-max-angle": 30,
         "symbol-spacing": 260,
         "text-padding": 4
@@ -1363,6 +1652,10 @@
           [
             "get",
             "name:nonlatin"
+          ],
+          [
+            "get",
+            "name:en"
           ],
           [
             "get",
@@ -1420,6 +1713,10 @@
               ],
               [
                 "get",
+                "name:en"
+              ],
+              [
+                "get",
                 "name"
               ],
               [
@@ -1453,6 +1750,10 @@
             [
               "get",
               "name:nonlatin"
+            ],
+            [
+              "get",
+              "name:en"
             ],
             [
               "get",
@@ -1514,6 +1815,10 @@
           [
             "get",
             "name:nonlatin"
+          ],
+          [
+            "get",
+            "name:en"
           ],
           [
             "get",

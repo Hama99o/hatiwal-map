@@ -158,9 +158,7 @@ const PALETTES_V2 = {
     labelPoi: "#56637A",
     labelWater: "#3E6E96",
     halo: "#F7F5F0",
-    shadeShadow: "#77705E",
-    shadeHighlight: "#FFFFFF",
-    shadeAccent: "#8C7F66",
+    shadeOpacity: 0.5,
   },
   dark: {
     v2: true,
@@ -197,19 +195,22 @@ const PALETTES_V2 = {
     labelPoi: "#A9B4CE",
     labelWater: "#7FA3D6",
     halo: "#0F1B38",
-    shadeShadow: "#03081A",
-    shadeHighlight: "#3A4E85",
-    shadeAccent: "#0A1230",
+    // Shadows on navy need more opacity to read at all.
+    shadeOpacity: 1,
   },
 };
 
-// Terrain-RGB (Terrarium) source for the v2 hillshade. Mapterhorn publishes it
-// as open data (512px WebP, terrarium encoding); the PLAN is to self-host an
-// extract as /terrain on map.hatiwal.com (sizes measured in MAP_V2.md), so
-// clients never depend on a third party. Until that extract exists the URL is
-// overridable, which is how the previews were rendered.
-const TERRAIN = process.env.HATIWAL_TERRAIN || "https://map.hatiwal.com/terrain/{z}/{x}/{y}.webp";
-const TERRAIN_MAXZOOM = Number(process.env.HATIWAL_TERRAIN_MAXZOOM || 10);
+// PRE-RENDERED hillshade for v2 (tools/hillshade.mjs), NOT a live DEM.
+//
+// The first v2 draft used a `raster-dem` source + `hillshade` layer. Measured
+// on a phone viewport that cost 1,277 KB at country zoom against 95 KB for the
+// entire vector map — unacceptable for users on metered Afghan mobile data.
+// These tiles are shaded once on the server: shadows only, one constant colour,
+// strength in the alpha channel, 256px images drawn at tileSize 512 (the
+// shading is soft by nature, so the upscale is invisible). ~15 KB a tile over
+// the Hindu Kush, the densest relief in the service area — see MAP_V2.md §4.
+const HILLSHADE = process.env.HATIWAL_HILLSHADE || "https://map.hatiwal.com/hillshade/{z}/{x}/{y}.webp";
+const HILLSHADE_MAXZOOM = Number(process.env.HATIWAL_HILLSHADE_MAXZOOM || 10);
 
 /** Label language chain. `name:ps` EXISTS now — the tiles are built with
  *  `--languages=ps,fa,en,ur`; before that ps fell back to Dari, which is what
@@ -239,7 +240,28 @@ const LANGS = {
   ur: ["name:ur", "name:nonlatin", "name", "name:latin"],
 };
 
-const nameField = (lang) => ["coalesce", ...LANGS[lang].map((k) => ["get", k])];
+// v2 chains (owner-approved 2026-10-02). The reason: measured in the live tiles,
+// Kabul's central z14 tile has 4 named streets and 0 of them carry name:ps or
+// name:fa; Herat's has 0. With the v1 chains a Dari reader falls through to
+// `name`, which is fine when `name` is local script but blank-ish when it is
+// absent. v2 tries the SISTER language first (ps ⇄ fa, ur → fa — the scripts
+// and much of the vocabulary are shared), then English, then whatever `name`
+// says, then latin, so a label is never blank while ANY name exists.
+//
+// `name:nonlatin` comes BEFORE `name:en` — a measured deviation from the
+// brief's ps→fa→en→name. OpenMapTiles sets name:nonlatin to the local name when
+// it is already in a non-Latin script. With en ahead of it, a Dari reader saw
+// English for 187 Kabul features whose `name` was already Dari ("سرک سمنت خانه"
+// rendered as "Cement Khaneh Street"), 129 in Herat, 154 in Islamabad. English
+// now only wins when no Arabic-script name exists at all.
+const LANGS_V2 = {
+  en: ["name:en", "name", "name:latin"],
+  ps: ["name:ps", "name:fa", "name:nonlatin", "name:en", "name", "name:latin"],
+  fa: ["name:fa", "name:ps", "name:nonlatin", "name:en", "name", "name:latin"],
+  ur: ["name:ur", "name:fa", "name:nonlatin", "name:en", "name", "name:latin"],
+};
+
+const nameField = (lang, v2 = false) => ["coalesce", ...(v2 ? LANGS_V2 : LANGS)[lang].map((k) => ["get", k])];
 
 // Road class groups. `transportation.class` carries these values; grouping them
 // is what gives the city a spine — before this every road shared one width and
@@ -269,10 +291,10 @@ const POI_COMMERCE = [
 const inClass = (values) => ["in", ["get", "class"], ["literal", values]];
 
 function layers(c, lang) {
-  const label = nameField(lang);
   // v2 only. Each `...only(v2, …)` splice adds a depth layer; with v2 false it
   // adds nothing, so the v1 output stays byte-identical (checked by md5).
   const v2 = !!c.v2;
+  const label = nameField(lang, v2);
   const only = (cond, ...ls) => (cond ? ls : []);
   return [
     { id: "background", type: "background", paint: { "background-color": c.bg } },
@@ -327,17 +349,16 @@ function layers(c, lang) {
         // MOUNTAIN SHADING. The single biggest "looks 3D at pitch 0" win for a
         // country that is mostly mountains. Light from the north-west (map
         // convention), viewport-anchored so it matches the building shadows.
-        // Strong at country/province zoom, fading out by z14 so it never muddies
-        // the streets a buyer is reading.
-        id: "hillshade", type: "hillshade", source: "terrain",
-        maxzoom: 16,
+        // Strong at country/province zoom, fading out by z15 so it never muddies
+        // the streets a buyer is reading. The light is baked into the tiles
+        // (north-west, same as the building shadows), so it does not rotate
+        // with the map — the same trade every pre-rendered basemap makes.
+        id: "hillshade", type: "raster", source: "hillshade",
+        maxzoom: 15,
         paint: {
-          "hillshade-illumination-anchor": "viewport",
-          "hillshade-illumination-direction": 315,
-          "hillshade-shadow-color": c.shadeShadow,
-          "hillshade-highlight-color": c.shadeHighlight,
-          "hillshade-accent-color": c.shadeAccent,
-          "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 8, 0.45, 10, 0.35, 12, 0.24, 13, 0.16, 14, 0.07, 15, 0],
+          "raster-opacity": ["interpolate", ["linear"], ["zoom"],
+            4, c.shadeOpacity, 10, c.shadeOpacity * 0.85, 12, c.shadeOpacity * 0.6, 14, c.shadeOpacity * 0.2, 15, 0],
+          "raster-fade-duration": 0,
         },
       },
     ),
@@ -518,6 +539,25 @@ function layers(c, lang) {
     },
 
     // ── labels ──
+    ...only(v2, {
+      // House numbers, z17+ only — where a buyer is finding the actual gate.
+      // FIRST label layer on purpose: MapLibre places later layers first, so
+      // these only appear where nothing more important wants the space.
+      id: "housenumber-label", type: "symbol", source: "hatiwal", "source-layer": "housenumber",
+      minzoom: 17,
+      // Real numbers only. Measured in Karachi: most `housenumber` values there
+      // are imported Google Plus Codes ("V2G8+FV"), which carpeted a z17 view
+      // in noise. Anything with a "+" or longer than 8 characters is dropped.
+      filter: ["all",
+        ["!", ["in", "+", ["to-string", ["get", "housenumber"]]]],
+        ["<=", ["length", ["to-string", ["get", "housenumber"]]], 8]],
+      layout: {
+        "text-field": ["get", "housenumber"], "text-font": FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 17, 9, 19, 11],
+        "text-padding": 2, "text-max-width": 6,
+      },
+      paint: { "text-color": c.labelMuted, "text-halo-color": c.halo, "text-halo-width": 1, "text-opacity": 0.85 },
+    }),
     {
       id: "place-label", type: "symbol", source: "hatiwal", "source-layer": "place",
       // ZOOM-GATED BY CLASS. This used to be one flat class list with no zoom
@@ -537,14 +577,26 @@ function layers(c, lang) {
       // sub-settlement detail from z13. Nothing is removed from the tileset —
       // this is purely when each class is DRAWN, so it ships as a style update
       // (cached 1h) with no rebuild and no app release.
-      filter: ["any",
-        inClass(["city", "region", "state"]),
-        ["all", [">=", ["zoom"], 8],  inClass(["town"])],
-        ["all", [">=", ["zoom"], 11], inClass(["village"])],
-        ["all", [">=", ["zoom"], 13], inClass(["suburb", "neighbourhood", "quarter", "hamlet"])],
-      ],
+      // v2 brings each class in ONE zoom earlier (towns z7, villages z10,
+      // suburbs/neighbourhoods z12; hamlets stay z13) and adds a sort key, so
+      // when labels collide the bigger place always wins — sooner, not busier.
+      filter: v2
+        ? ["any",
+            inClass(["city", "region", "state"]),
+            ["all", [">=", ["zoom"], 7],  inClass(["town"])],
+            ["all", [">=", ["zoom"], 10], inClass(["village"])],
+            ["all", [">=", ["zoom"], 12], inClass(["suburb", "neighbourhood", "quarter"])],
+            ["all", [">=", ["zoom"], 13], inClass(["hamlet"])]]
+        : ["any",
+            inClass(["city", "region", "state"]),
+            ["all", [">=", ["zoom"], 8],  inClass(["town"])],
+            ["all", [">=", ["zoom"], 11], inClass(["village"])],
+            ["all", [">=", ["zoom"], 13], inClass(["suburb", "neighbourhood", "quarter", "hamlet"])],
+          ],
       layout: {
         "text-field": label, "text-font": FONT,
+        ...(v2 ? { "symbol-sort-key": ["match", ["get", "class"],
+          "state", 0, "region", 0, "city", 1, "town", 2, "village", 3, "suburb", 4, "quarter", 4, "neighbourhood", 5, 6] } : {}),
         // interpolate OUTERMOST; the class check lives INSIDE each stop.
         "text-size": [
           "interpolate", ["linear"], ["zoom"],
@@ -559,25 +611,37 @@ function layers(c, lang) {
     {
       // NEW. The single biggest orientation win for a meet-in-person marketplace:
       // z15+ only, so it never competes with price markers at scanning zooms.
+      // v2: landmarks one zoom earlier (z14), and from z16 EVERY other named
+      // POI that is not commerce (that layer below has its own tier) — ranked
+      // landmarks-first, so the extra labels only fill gaps.
       id: "poi-label", type: "symbol", source: "hatiwal", "source-layer": "poi",
-      minzoom: 15, filter: ["all", inClass(POI_LANDMARK), ["has", "name"]],
+      minzoom: v2 ? 14 : 15,
+      filter: v2
+        ? ["all", ["has", "name"], ["any",
+            inClass(POI_LANDMARK),
+            ["all", [">=", ["zoom"], 16], ["!", inClass(POI_COMMERCE)]]]]
+        : ["all", inClass(POI_LANDMARK), ["has", "name"]],
       layout: {
         "text-field": label, "text-font": FONT,
-        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 12.5],
+        "text-size": v2
+          ? ["interpolate", ["linear"], ["zoom"], 14, 9.5, 18, 12.5]
+          : ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 12.5],
         "text-max-width": 9, "text-padding": 6, "text-optional": true,
-        "symbol-sort-key": ["get", "rank"],
+        "symbol-sort-key": v2
+          ? ["+", ["case", inClass(POI_LANDMARK), 0, 100], ["coalesce", ["get", "rank"], 50]]
+          : ["get", "rank"],
       },
       paint: { "text-color": c.labelPoi, "text-halo-color": c.halo, "text-halo-width": 1.2 },
     },
     {
       // Commerce, one zoom in from the landmarks.
       id: "poi-commerce-label", type: "symbol", source: "hatiwal", "source-layer": "poi",
-      minzoom: 16, filter: ["all", inClass(POI_COMMERCE), ["has", "name"]],
+      minzoom: v2 ? 15 : 16, filter: ["all", inClass(POI_COMMERCE), ["has", "name"]],
       layout: {
         "text-field": label, "text-font": FONT,
-        "text-size": ["interpolate", ["linear"], ["zoom"], 16, 9.5, 18, 11.5],
+        "text-size": ["interpolate", ["linear"], ["zoom"], v2 ? 15 : 16, 9.5, 18, 11.5],
         "text-max-width": 9, "text-padding": 6, "text-optional": true,
-        "symbol-sort-key": ["get", "rank"],
+        "symbol-sort-key": v2 ? ["+", 50, ["coalesce", ["get", "rank"], 50]] : ["get", "rank"],
       },
       paint: { "text-color": c.labelPoi, "text-halo-color": c.halo, "text-halo-width": 1.1 },
     },
@@ -586,7 +650,14 @@ function layers(c, lang) {
       minzoom: 12,
       layout: {
         "text-field": label, "text-font": FONT, "symbol-placement": "line",
-        "text-size": 11, "text-max-angle": 30, "symbol-spacing": 260, "text-padding": 4,
+        // v2: streets already label from z12 (v1 too), so "earlier" means
+        // PRIORITY — main roads place first and read a size larger; minor
+        // streets fill whatever room is left.
+        "text-size": v2
+          ? ["interpolate", ["linear"], ["zoom"], 12, ["case", inClass([...MAJOR, ...SECONDARY]), 11, 10], 16, ["case", inClass([...MAJOR, ...SECONDARY]), 13, 11.5]]
+          : 11,
+        ...(v2 ? { "symbol-sort-key": ["case", inClass(MAJOR), 0, inClass(SECONDARY), 1, 2] } : {}),
+        "text-max-angle": 30, "symbol-spacing": 260, "text-padding": 4,
       },
       paint: { "text-color": c.labelMuted, "text-halo-color": c.halo, "text-halo-width": 1.4 },
     },
@@ -665,20 +736,19 @@ for (const theme of ["light", "dark"]) {
           attribution: "© OpenMapTiles © OpenStreetMap contributors",
         },
         ...(v2 ? {
-          terrain: {
-            type: "raster-dem",
-            tiles: [TERRAIN],
-            encoding: "terrarium",
+          hillshade: {
+            type: "raster",
+            tiles: [HILLSHADE],
             tileSize: 512,
             minzoom: 0,
-            maxzoom: TERRAIN_MAXZOOM,
+            maxzoom: HILLSHADE_MAXZOOM,
             bounds: [44.0, 23.6, 77.9, 39.8],
-            attribution: "© Mapterhorn",
+            attribution: "Terrain © Mapterhorn",
           },
         } : {}),
       },
-      // v2: one north-west light for the extrusions, viewport-anchored like the
-      // hillshade and the shadows, so every depth cue agrees on where the sun is.
+      // v2: one north-west light for the extrusions, matching the baked hillshade
+      // and the shadows, so every depth cue agrees on where the sun is.
       ...(v2 ? { light: { anchor: "viewport", position: [1.2, 315, 35], intensity: theme === "light" ? 0.35 : 0.25, color: "#FFFFFF" } } : {}),
       glyphs: GLYPHS,
       center: [67.69389, 33.937652],

@@ -5,3 +5,5 @@ tiles/
 tmp/
 .env.production
 node_modules
+build/
+logs/
