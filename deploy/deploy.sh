@@ -21,7 +21,13 @@ SSH_USER="${SSH_USER:-kamal}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 DOMAIN="${DOMAIN:-map.hatiwal.com}"
 REMOTE="/home/${SSH_USER}/hatiwal-map"
-TILES="${TILES:-tmp/data/afghanistan.pmtiles}"
+# The live tileset is Afghanistan + Pakistan + Iran (904 MB, built 2026-09-13;
+# RUNBOOK section 3). It is uploaded ONLY with UPLOAD_TILES=1: on 2026-10-02 this
+# script's old default re-uploaded a stale 138 MB Afghanistan-only file over the
+# correct one during the VPS migration, and Pakistan/Iran went blank.
+TILES="${TILES:-tmp/data/pk1/hatiwal3.pmtiles}"
+UPLOAD_TILES="${UPLOAD_TILES:-0}"
+MIN_TILES_BYTES=500000000   # anything smaller is not the 3-country build
 
 ssh_() { ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_KEY" "${SSH_USER}@${HOST}" "$@"; }
 scp_() { scp -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_KEY" "$@"; }
@@ -30,10 +36,18 @@ echo "==> 1/6 remote dirs"
 ssh_ "mkdir -p ${REMOTE}/tiles ${REMOTE}/static/styles ${REMOTE}/static/fonts"
 
 echo "==> 2/6 tiles"
-if [ -f "$TILES" ]; then
-  # Upload beside the live file and swap, so no request ever reads a partial one.
+if [ "$UPLOAD_TILES" != "1" ]; then
+  echo "    skipped: leaving the server's tiles as they are (set UPLOAD_TILES=1 to replace them)."
+elif [ -f "$TILES" ] && [ "$(stat -c %s "$TILES")" -ge "$MIN_TILES_BYTES" ]; then
+  # Upload beside the live file, check it arrived whole, then swap, so no
+  # request ever reads a partial one.
   scp_ "$TILES" "${SSH_USER}@${HOST}:${REMOTE}/tiles/.incoming.pmtiles"
-  ssh_ "cd ${REMOTE}/tiles && mv .incoming.pmtiles afghanistan.pmtiles"
+  LOCAL_MD5=$(md5sum "$TILES" | cut -d' ' -f1)
+  ssh_ "cd ${REMOTE}/tiles && [ \"\$(md5sum .incoming.pmtiles | cut -d' ' -f1)\" = $LOCAL_MD5 ] && mv .incoming.pmtiles afghanistan.pmtiles" \
+    || { echo "    upload checksum mismatch: live tiles NOT replaced"; exit 1; }
+elif [ -f "$TILES" ]; then
+  echo "    REFUSING: $TILES is $(stat -c %s "$TILES") bytes, smaller than the 3-country build. Live tiles NOT replaced."
+  exit 1
 else
   echo "    no local $TILES — leaving whatever is on the server."
   echo "    regenerate with: docker run --rm -v \"\$PWD/tmp/data:/data\" \\"

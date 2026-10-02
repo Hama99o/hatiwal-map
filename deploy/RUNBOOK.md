@@ -59,6 +59,14 @@ them in a volume.
 
 ## 2. Redeploy / restore from nothing
 
+> ⚠️ **Since 2026-10-02 `deploy.sh` does NOT upload tiles unless `UPLOAD_TILES=1`.**
+> Its old default (`tmp/data/afghanistan.pmtiles`, a stale 138 MB Afghanistan-only
+> build) silently replaced the live 3-country file during the VPS migration, and
+> Pakistan and Iran went blank until it was restored from the old server. With
+> `UPLOAD_TILES=1` it uploads `tmp/data/pk1/hatiwal3.pmtiles` (904 MB), refuses
+> anything under 500 MB, and swaps only after an md5 match. Check after any tiles
+> change: an Islamabad tile, e.g. `/afghanistan/12/2879/1641.mvt`, must be 200.
+
 `deploy/deploy.sh` is idempotent and recreates the whole service. Run it after a
 VPS rebuild, a `docker system prune`, or any time you are unsure what is on the
 server:
