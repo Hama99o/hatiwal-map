@@ -99,7 +99,7 @@ async function dem(z, x, y) {
     }
   })();
   cache.set(key, p);
-  if (cache.size > 4000) cache.delete(cache.keys().next().value);
+  if (cache.size > 600) cache.delete(cache.keys().next().value);
   return p;
 }
 
