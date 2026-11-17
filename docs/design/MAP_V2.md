@@ -244,6 +244,23 @@ archive." to stdout and exits 0, so a missing tile counted as 27 bytes. It now d
 
 ## 9. Swapping v2 live (after approval)
 
+**Prepared 2026-11-17 on branch `map/v2-live-swap`, NOT deployed** (waiting for the owner's own go).
+`build-styles.mjs` has `LIVE_VARIANT = "v2"`: the live names get the v2 bytes (identical to
+`hatiwal-v2-*`, so `/v2` keeps matching), and the old palette is kept as `hatiwal-v1-*.json`.
+Local render test against these files: 18/18. Clients request unversioned URLs and `/styles/` is
+`max-age=3600`, so no cache-bust is needed: every client has the new look within an hour.
+
+Deploy (RUNBOOK §3):
+```bash
+ssh kamal@$HOST 'cd ~/hatiwal-map/static && rm -rf styles.prev && cp -a styles styles.prev'
+scp styles/hatiwal-{light,dark}-{en,ps,fa,ur}.json kamal@$HOST:hatiwal-map/static/styles/
+node test/render-test.mjs     # against LIVE, must be 18/18
+```
+Rollback, one command (no restart, nginx serves styles from a read-only mount):
+```bash
+ssh kamal@$HOST 'cd ~/hatiwal-map/static && cp -a styles.prev/. styles/'
+```
+
 1. In `build-styles.mjs`, write the v2 palettes to the **v1 file names**. Never rename the files:
    every installed app requests `hatiwal-{theme}-{lang}.json` by name. Sources, tile URL and glyph
    URL stay identical. v2 only ADDS the `hillshade` raster source.

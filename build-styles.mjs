@@ -701,10 +701,19 @@ const PURPOSE =
   "Search-surface basemap. Deliberately quiet: the LISTINGS are the content and this is the backdrop. Brand gold (#E8B23A) is absent on purpose — it belongs to the price markers drawn on top, and a gold-flecked basemap would make them stop standing out.";
 
 let count = 0;
-// v1 = the LIVE files (hatiwal-{theme}-{lang}.json). v2 = the depth redesign,
-// emitted beside them as hatiwal-v2-{theme}-{lang}.json until the owner
-// approves the swap. The swap is: make v2 the palette set written to the v1
-// names — never rename the files, every installed app requests them by name.
+// Which variant is written to the LIVE names (hatiwal-{theme}-{lang}.json),
+// the only ones installed apps request. Never rename those files.
+//   "v2" since the owner's go (MAP_V2 §9): live = v2, and the old palette is
+//        kept beside it as hatiwal-v1-*.json, the rollback set.
+//   "v1" = the pre-swap state (live = v1, v2 beside it as hatiwal-v2-*).
+// hatiwal-v2-*.json is still written, byte-identical to the live files, so
+// /v2/styles/ (device QA) keeps serving exactly what is live.
+const LIVE_VARIANT = "v2";
+const fileNames = (variant, theme, lang) => {
+  const live = `styles/hatiwal-${theme}-${lang}.json`;
+  if (variant === "v2") return LIVE_VARIANT === "v2" ? [live, `styles/hatiwal-v2-${theme}-${lang}.json`] : [`styles/hatiwal-v2-${theme}-${lang}.json`];
+  return LIVE_VARIANT === "v1" ? [live] : [`styles/hatiwal-v1-${theme}-${lang}.json`];
+};
 for (const variant of ["v1", "v2"]) {
 for (const theme of ["light", "dark"]) {
   for (const lang of ["en", "ps", "fa", "ur"]) {
@@ -755,8 +764,7 @@ for (const theme of ["light", "dark"]) {
       zoom: 5,
       layers: layers(c, lang),
     };
-    writeFileSync(`styles/hatiwal-${v2 ? "v2-" : ""}${theme}-${lang}.json`, JSON.stringify(style, null, 2) + "\n");
-    count++;
+    for (const f of fileNames(variant, theme, lang)) { writeFileSync(f, JSON.stringify(style, null, 2) + "\n"); count++; }
   }
 }
 }
