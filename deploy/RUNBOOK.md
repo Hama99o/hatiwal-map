@@ -229,7 +229,9 @@ hillshade rebuilt with the wider `BBOX` (§3c).
 
 ### 3b. Monthly OSM refresh (automatic) — `tools/update-tiles.sh`
 
-Runs on the VPS from kamal's crontab, never on a laptop:
+Runs on the VPS from kamal's crontab, never on a laptop. Install or re-install
+it with `ssh kamal@<vps> 'cd ~/hatiwal-map && ./tools/install-cron.sh'`
+(idempotent, keeps the other cron lines):
 
 ```
 0 2 1 * *  cd /home/kamal/hatiwal-map && flock -n /tmp/hatiwal-tiles.lock ./tools/update-tiles.sh >> logs/update-tiles.log 2>&1
@@ -246,7 +248,12 @@ gate passes:
 - after the swap, a public Islamabad z12 check, which rolls back on its own if
   it fails.
 
-The previous file stays as `tiles/afghanistan.prev.pmtiles`.
+The previous file stays as `tiles/afghanistan.prev.pmtiles` (the only rollback
+copy; older ones were deleted 2026-11-17). A run that aborts deletes its own
+`.incoming.pmtiles`, so no 900 MB leftover sits next to the live file.
+
+Measured on the VPS 2026-11-17: 18 min end to end, peak container RAM 2.68 GiB,
+OSM extracts dated 2026-11-16.
 
 - Dry run (build + gates, no swap): `SKIP_SWAP=1 ./tools/update-tiles.sh`
 - Did last month's run work? `tail -30 logs/update-tiles.log`. The last line
@@ -377,6 +384,6 @@ billing, and their terms bar using their data to build a competing map — which
 the dependency this whole service exists to escape.
 
 Status: **deferred by the owner** — "leave it like this, with time we will
-decide". The tiles are current (OSM snapshot 2026-08-30) and refreshing them is
-§3, a manual step with no automation on the VPS.
+decide". Refreshing the OSM data is automatic since 2026-11-17: a monthly cron
+on the VPS (§3b).
 

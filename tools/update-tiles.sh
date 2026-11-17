@@ -31,7 +31,10 @@ LOW="nice -n 19 ionice -c3"
 PM="docker run --rm -v $TILES:/t:ro ghcr.io/protomaps/go-pmtiles:latest"
 mkdir -p "$WORK" "$ROOT/logs"
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
-fail() { log "ABORT: $*"; exit 1; }
+# A failed run must never leave a half-checked 900 MB file next to the live one:
+# the 2026-10-02 dry run left a root-owned .incoming.pmtiles that sat there for
+# six weeks. The live file is never touched before step 5.
+fail() { log "ABORT: $*"; rm -f "$INCOMING" 2>/dev/null || true; exit 1; }
 T0=$(date +%s)
 
 # Peak-RAM sampler: every 15s, record the build containers' memory. The max is

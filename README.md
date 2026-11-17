@@ -259,7 +259,7 @@ phones until a new build ships.
 | **iOS loses Apple Maps** | A real cost, not just a change. Apple Maps has better data in many places, native performance, zero infrastructure. Apple does **not** use OSM, so iOS may show **less detail** than today in parts of Afghanistan. **Worth comparing on a device before committing** — two good maps may beat three identical ones. |
 | **iOS cannot be tested here** | Needs macOS + Xcode. The iOS half can be written and compiled but must be verified on a real device by the owner. |
 | **Tiles share the box with the API** | Mitigated: static files, near-zero CPU, load is 0.20 today, and Cloudflare in front means most requests never arrive. |
-| **Staleness** | Tiles are frozen until regenerated. Acceptable at monthly/quarterly; a cron job if wanted. |
+| **Staleness** | Tiles are frozen until regenerated. A monthly cron on the VPS refreshes them (since 2026-11-17, RUNBOOK §3b). |
 | **OSM coverage in rural Afghanistan** | Sparse in places — but identical to what CARTO and OSM tiles already show, since they render the same data. Not a regression. |
 | **Interim stopgap** | A QA agent switched Android to `tile.openstreetmap.org` (uncommitted). **Do not ship it** — it trades a cosmetic watermark for a terms violation, in a second client, and if OSM blocks us maps break *entirely*, which is worse than ugly. |
 
@@ -281,6 +281,11 @@ Health check, redeploy, updating tiles/styles, a symptom→cause→fix table for
 every failure that has actually happened here, and the rollback story.
 
 ## 8. What is LIVE (2026-08-31)
+
+> **Update 2026-11-17:** the tileset is now Afghanistan + Pakistan + Iran (866 MB), built from the
+> Geofabrik extracts of **2026-11-16** and refreshed monthly by cron (RUNBOOK §3b). Styles are
+> `hatiwal-{light,dark}-{en,ps,fa,ur}.json`; the v2 redesign is on `/v2/styles/` for review only
+> (`docs/design/MAP_V2.md`). The numbers below are the original 2026-08-31 launch.
 
 `https://map.hatiwal.com` is serving. All of this was verified from the public internet, and by
 rendering a real map, not by reading headers.
@@ -342,9 +347,10 @@ client cannot forget it.
 
 ### Refreshing the data
 
-```bash
-docker run --rm -v "$PWD/tmp/data:/data" ghcr.io/onthegomap/planetiler:latest \
-  --area=afghanistan --output=/data/afghanistan.pmtiles --force --download
-# then scp to the VPS and restart hatiwal_map_tiles
-```
-Three minutes. Monthly or quarterly is ample — Kabul's street layout does not change weekly.
+**Automatic, monthly, on the VPS** — `tools/update-tiles.sh` from kamal's crontab at 02:00 UTC on
+the 1st (installed 2026-11-17 by `tools/install-cron.sh`). It builds AF+PK+IR, swaps only if every
+gate passes, and keeps the previous file as `tiles/afghanistan.prev.pmtiles`. Full detail, dry run
+and rollback: [`deploy/RUNBOOK.md` §3b](deploy/RUNBOOK.md).
+
+> Do NOT use the old one-liner that used to sit here (`--area=afghanistan`, then scp). It builds an
+> Afghanistan-only file, and that exact mistake blanked Pakistan and Iran on 2026-10-02.
