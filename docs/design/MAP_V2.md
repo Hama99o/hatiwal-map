@@ -1,8 +1,10 @@
 # Map v2 — "depth" redesign of map.hatiwal.com
 
-**Status (2026-10-02):** owner approved the look ("seems to be good"). Built and verified
-locally. **Not deployed:** the server steps (hillshade build, `/v2` staging, monthly tile
-update) are scripted but not run yet.
+**Status (2026-11-17):** owner approved the look ("seems to be good"). The server steps are done:
+`tiles/hillshade.pmtiles` is served at `/hillshade/{z}/{x}/{y}.webp`, the v2 styles are live on the
+**`/v2` staging location only** (`https://map.hatiwal.com/v2/styles/hatiwal-{light,dark}-{en,ps,fa,ur}.json`),
+and the monthly tile update runs from cron. **§9 (v2 replacing the live styles) waits for the
+owner's review** of `/v2` on a device.
 The 8 live styles (`hatiwal-{light,dark}-{en,ps,fa,ur}.json`) are byte-identical to before
 (md5-checked after every generator run). The owner reviews the previews before anything ships.
 
@@ -201,8 +203,10 @@ The script runs on the VPS from cron, at 02:00 UTC on the 1st:
 Same build as 2026-09-13: Geofabrik afghanistan + pakistan + iran → `osmium merge` (in a throwaway
 debian container) → planetiler `--languages=ps,fa,en,ur --bounds=44.0,23.6,77.9,39.8 --download`.
 Resources: nice 19 / ionice idle, 2 threads, `-Xmx2g`, container memory cap 3 GB, `--storage=mmap`.
-The local reference build took 19m24s with a heap peak of 1.9 GB at 6 threads. **The VPS
-duration and peak RAM are not measured yet**; the script logs both.
+The local reference build took 19m24s with a heap peak of 1.9 GB at 6 threads. **Measured on the
+VPS** (2 threads, 3 GB cap): dry run 2026-10-02 in 15 min; first real swap 2026-11-17 in **18 min**,
+peak container RAM **2.68 GiB**, host RAM available never under ~3.8 GB, API `/up` 200 throughout.
+Installed in cron 2026-11-17 with `tools/install-cron.sh`.
 
 **Gates before any swap:** ≥ 8 GB free disk to start; output ≥ 500 MB; declared bounds cover
 44.0,23.6–77.9,39.8; Kabul, Herat, Islamabad, Karachi and Tehran tiles at z10/12/14 present

@@ -2,6 +2,8 @@
 // rendered by the same maplibre-gl major the web app ships (5.x), on real tiles.
 //
 //   MAP_BASE=http://127.0.0.1:8099 node test/preview-v2.mjs     # → tmp/v2/*.png
+//   V2_STAGING=1 node test/preview-v2.mjs    # right = the DEPLOYED /v2 staging styles
+//   OUT=~/Downloads/x VIEWS=kabul-z13-en,kabul-z13-fa node test/preview-v2.mjs
 //
 // Left always loads from the live host, so "old" is what users see today.
 // Right loads from MAP_BASE (your tree). Until /hillshade is hosted, its
@@ -14,7 +16,11 @@ const BASE = process.env.MAP_BASE || 'https://map.hatiwal.com';
 const LIVE = 'https://map.hatiwal.com';
 // A local directory of tools/hillshade.mjs output, e.g. tmp/hs/sh25.
 const HILLSHADE_PREVIEW = process.env.HILLSHADE_PREVIEW;
-const OUT = 'tmp/v2';
+const OUT = process.env.OUT || 'tmp/v2';
+// /v2 staging serves the v2 styles under the v1 FILE NAMES (MAP_V2 §8).
+const v2Url = (theme, lang) => process.env.V2_STAGING === '1'
+  ? `${LIVE}/v2/styles/hatiwal-${theme}-${lang}.json`
+  : `${BASE}/styles/hatiwal-v2-${theme}-${lang}.json`;
 mkdirSync(OUT, { recursive: true });
 
 const VIEWS = [
@@ -22,6 +28,8 @@ const VIEWS = [
   { name: 'hindukush-z10',     lang: 'en', center: [69.10, 35.25],     zoom: 9.5 },
   { name: 'bamyan-z10',        lang: 'fa', center: [67.83, 34.82],     zoom: 10 },
   { name: 'kabul-z10',         lang: 'en', center: [69.18, 34.53],     zoom: 10 },
+  { name: 'kabul-z13-en',      lang: 'en', center: [69.1723, 34.5281], zoom: 13 },
+  { name: 'kabul-z13-fa',      lang: 'fa', center: [69.1723, 34.5281], zoom: 13 },
   { name: 'kabul-z13-ps',      lang: 'ps', center: [69.1723, 34.5281], zoom: 13 },
   { name: 'herat-z13-fa',      lang: 'fa', center: [62.199, 34.348],   zoom: 13 },
   { name: 'kabul-z15-fa',      lang: 'fa', center: [69.1780, 34.5290], zoom: 15 },
@@ -53,7 +61,7 @@ for (const theme of THEMES) for (const v of VIEWS.filter((v) => !ONLY || ONLY.in
     <div class="c"><div class="h">AFTER — hatiwal-v2-${theme}-${v.lang}</div><div id="b" class="m"></div></div>
     <script>
       window.__e=[]; let idle=0;
-      for (const [id,url] of [['a','${LIVE}/styles/hatiwal-${theme}-${v.lang}.json'],['b','${BASE}/styles/hatiwal-v2-${theme}-${v.lang}.json']]) {
+      for (const [id,url] of [['a','${LIVE}/styles/hatiwal-${theme}-${v.lang}.json'],['b','${v2Url(theme, v.lang)}']]) {
         const m=new maplibregl.Map({container:id,style:url,${cam},attributionControl:false,fadeDuration:0,canvasContextAttributes:{preserveDrawingBuffer:true}});
         m.on('error',e=>window.__e.push(id+': '+(e.error&&e.error.message||'err')));
         m.once('idle',()=>{idle++; if(id==='b') window.__labels=m.queryRenderedFeatures().filter(f=>f.layer.type==='symbol').length;});
